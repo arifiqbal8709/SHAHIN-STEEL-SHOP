@@ -1,0 +1,15 @@
+{
+  "name": "shahin-steel-furniture-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SHAHIN STEEL FURNITURE — Complete Shop Management System",
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "preview": "npm run preview --prefix frontend",
+    "backend": "cd backend && python manage.py runserver 0.0.0.0:8000",
+    "migrate": "cd backend && python manage.py migrate",
+    "seed": "cd backend && python manage.py seed_demo_data"
+  }
+}
+

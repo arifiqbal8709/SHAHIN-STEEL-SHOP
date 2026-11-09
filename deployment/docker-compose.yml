@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # 1. Central MySQL Cloud Database
+  db:
+    image: mysql:8.0
+    container_name: shahin_mysql_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_shahin_2026
+      MYSQL_DATABASE: shahin_furniture_db
+      MYSQL_USER: shahin_user
+      MYSQL_PASSWORD: shahin_password_2026
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../database/schema.sql:/docker-entrypoint-initdb.d/init.sql
+
+  # 2. Python Django REST API Backend
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: shahin_django_backend
+    restart: always
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ../backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - USE_MYSQL=True
+      - DB_ENGINE=mysql
+      - DB_NAME=shahin_furniture_db
+      - DB_USER=shahin_user
+      - DB_PASSWORD=shahin_password_2026
+      - DB_HOST=db
+      - DB_PORT=3306
+    depends_on:
+      - db
+
+  # 3. React Frontend
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: shahin_react_frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
+
