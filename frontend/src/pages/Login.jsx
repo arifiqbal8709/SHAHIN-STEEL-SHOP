@@ -59,7 +59,7 @@ const Login = () => {
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
     if (!username.trim()) {
-      setErrorMsg(activePortal === 'ADMIN' ? 'Please enter Admin username.' : 'Please enter your Staff ID or Login ID (e.g. keshav, adil).');
+      setErrorMsg(activePortal === 'ADMIN' ? 'Please enter Admin username.' : 'Please enter your Staff ID or Login ID.');
       return;
     }
     if (!password.trim()) {
@@ -157,9 +157,6 @@ const Login = () => {
               </>
             )}
           </div>
-          {activePortal === 'STAFF' && (
-            <span className="text-[10px] text-[#C49A6C] font-semibold">Keshav, Adil, etc.</span>
-          )}
         </div>
 
         {/* Error Alert */}
@@ -186,25 +183,15 @@ const Login = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 bg-white/5 rounded-xl border border-white/10 text-xs text-white focus:outline-none focus:border-[#C49A6C] transition-all font-medium"
-                placeholder={activePortal === 'ADMIN' ? 'admin' : 'Enter your Staff ID or Login ID (e.g. keshav, adil)'}
+                placeholder={activePortal === 'ADMIN' ? 'admin' : 'Enter your Staff ID or Login ID'}
               />
             </div>
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-[#A39E98]">
-                {activePortal === 'ADMIN' ? 'Admin Password' : 'Password'}
-              </label>
-              <button
-                type="button"
-                onClick={() => setPassword(activePortal === 'ADMIN' ? 'admin123' : 'staff123')}
-                className="text-[10px] text-[#C49A6C] hover:underline font-bold"
-                title="Fill default password"
-              >
-                {activePortal === 'ADMIN' ? 'Default: admin123' : 'Default: staff123'}
-              </button>
-            </div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#A39E98] mb-1.5">
+              {activePortal === 'ADMIN' ? 'Admin Password' : 'Password'}
+            </label>
             <div className="relative">
               <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A39E98]" />
               <input
