@@ -191,14 +191,14 @@ export const authAPI = {
           message: err.response.data.message || 'Invalid username, Staff ID, or password.'
         };
       }
-      // Offline fallback: STRICTLY only 'admin' or 'owner' is OWNER! Admin is one!
+      // Offline fallback: STRICTLY only primary owner is OWNER! Admin is one!
       const u = (credentials.username || '').toLowerCase().trim();
       const p = (credentials.password || '').trim();
-      const isOwner = (u === 'admin' || u === 'owner');
+      const isOwner = (u === 'shahin_industry');
       const role = isOwner ? 'OWNER' : (u === 'accountant' ? 'ACCOUNTANT' : 'EMPLOYEE');
 
       if (isOwner) {
-        if (p !== 'admin123') return { success: false, message: 'Invalid Admin password.' };
+        if (p !== 'shahin@2007') return { success: false, message: 'Invalid Admin password.' };
       } else {
         const matchedEmp = (mockStore.employees || []).find(e =>
           (e.username && e.username.toLowerCase() === u) ||

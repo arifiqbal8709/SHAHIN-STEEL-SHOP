@@ -53,15 +53,18 @@ class Command(BaseCommand):
         )
 
         # 2. Users
-        def create_user(username, email, role, phone):
+        def create_user(username, email, role, phone, password='admin123', is_super=False):
             user, created = User.objects.get_or_create(username=username, defaults={'email': email})
             if created:
-                user.set_password('admin123')
+                user.set_password(password)
+                if is_super:
+                    user.is_superuser = True
+                    user.is_staff = True
                 user.save()
             UserProfile.objects.get_or_create(user=user, defaults={'role': role, 'phone': phone})
             return user
 
-        owner_user = create_user('admin', 'owner@shahinsteel.com', owner_role, '+91 98765 43210')
+        owner_user = create_user('shahin_industry', 'owner@shahinsteel.com', owner_role, '+91 98765 43210', password='shahin@2007', is_super=True)
         acc_user = create_user('accountant', 'accounts@shahinsteel.com', acc_role, '+91 98765 43211')
         staff_user = create_user('staff1', 'sales@shahinsteel.com', emp_role, '+91 98765 43212')
 

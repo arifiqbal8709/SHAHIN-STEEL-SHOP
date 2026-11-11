@@ -50,7 +50,7 @@ def is_owner_user(user):
     """Return True if user is the primary admin, superuser, or has OWNER profile role."""
     if not user or not user.is_authenticated:
         return False
-    if user.username == 'admin' or user.is_superuser:
+    if user.is_superuser or user.username in ('shahin_industry', 'admin'):
         return True
     profile = getattr(user, 'profile', None)
     return bool(profile and profile.role and profile.role.name == 'OWNER')
@@ -190,15 +190,7 @@ def login_view(request):
             if not user and emp.user.check_password(password_clean):
                 user = emp.user
 
-    # 3. Default fallback for admin if needed
-    if not user and lookup_user.lower() in ['admin', 'owner'] and password_clean == 'admin123':
-        admin_u = User.objects.filter(username='admin').first()
-        if admin_u:
-            admin_u.set_password('admin123')
-            admin_u.save()
-            user = admin_u
-
-    # 4. Default fallback for standard staff accounts if needed
+    # 3. Default fallback for standard staff accounts if needed
     if not user and lookup_user.lower() in ['keshav', 'adil', 'staff01', 'staff02', 'ssf-staff-01', 'ssf-staff-02'] and password_clean == 'staff123':
         emp = Employee.objects.filter(
             Q(employee_code__iexact=lookup_user) |
@@ -267,7 +259,7 @@ def current_user_view(request):
         })
 
     # Fallback default active shop profile
-    owner_user = User.objects.filter(username__in=['admin', 'owner']).first() or User.objects.first()
+    owner_user = User.objects.filter(Q(is_superuser=True) | Q(username__in=['shahin_industry', 'admin', 'owner'])).first() or User.objects.first()
     if owner_user:
         return Response({
             'success': True,
@@ -278,7 +270,7 @@ def current_user_view(request):
         'success': True,
         'user': {
             'id': 1,
-            'username': 'admin',
+            'username': 'shahin_industry',
             'email': 'owner@shahinsteel.com',
             'role': 'OWNER',
             'display_name': 'Store Owner / Admin',
@@ -310,7 +302,7 @@ def active_staff_logins(request):
     display names, and usernames for seamless dynamic login on mobile, tablet, and PC.
     """
     staff_list = []
-    employees = Employee.objects.filter(is_active=True).select_related('user').exclude(user__username='admin').order_by('id')
+    employees = Employee.objects.filter(is_active=True).select_related('user').exclude(user__is_superuser=True).exclude(user__username__in=['shahin_industry', 'admin']).order_by('id')
 
     for emp in employees:
         if emp.user and emp.user.is_active:
@@ -1540,8 +1532,8 @@ def staff_detail_update(request, pk):
             else:
                 if User.objects.filter(username__iexact=new_u).exclude(pk=emp.user.pk).exists():
                     return Response({'success': False, 'message': f"Login ID '{new_u}' is already taken. Please choose another Login ID."}, status=status.HTTP_400_BAD_REQUEST)
-                # Keep primary 'admin' username intact so Owner quick-login always works
-                if not (emp.user.username == 'admin' and new_u != 'admin'):
+                # Keep primary Owner username intact so Owner login always works
+                if not is_owner_user(emp.user):
                     emp.user.username = new_u
                 if 'password' in data and data['password'].strip():
                     emp.user.set_password(data['password'].strip())
