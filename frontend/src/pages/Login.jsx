@@ -251,59 +251,6 @@ const Login = () => {
           </button>
         </form>
 
-        {/* ═══════════════════════════════════════════════════════════════════
-            QUICK ACCOUNT CARDS: STRICTLY ONLY 2 OPTIONS (OWNER & STAFF)
-            ═══════════════════════════════════════════════════════════════════ */}
-        <div className="mt-6 pt-5 border-t border-white/10">
-          <p className="text-[10px] font-bold text-[#A39E98] uppercase tracking-wider mb-2.5 text-center">
-            Select Showroom Account:
-          </p>
-
-          <div className="grid grid-cols-2 gap-2.5">
-            {/* 1. Owner (Admin) Card */}
-            <button
-              type="button"
-              onClick={selectAdminPortal}
-              className={`p-3 rounded-2xl border transition-all text-left flex items-center gap-2.5 ${
-                activePortal === 'ADMIN'
-                  ? 'bg-[#C49A6C]/20 border-[#C49A6C] shadow-sm'
-                  : 'bg-white/5 hover:bg-white/10 border-white/10'
-              }`}
-            >
-              <div className="w-8 h-8 rounded-xl bg-[#C49A6C]/20 border border-[#C49A6C]/40 flex items-center justify-center shrink-0">
-                <ShieldCheck size={16} className="text-[#C49A6C]" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-extrabold text-white truncate">Owner (Admin)</div>
-                <div className="text-[9px] text-[#A39E98] truncate">Shahin Steel &bull; admin</div>
-              </div>
-            </button>
-
-            {/* 2. Single Staff Login Card (For all staff members: Keshav, Adil, etc.) */}
-            <button
-              type="button"
-              onClick={selectStaffPortal}
-              className={`p-3 rounded-2xl border transition-all text-left flex items-center gap-2.5 ${
-                activePortal === 'STAFF'
-                  ? 'bg-[#C49A6C]/20 border-[#C49A6C] shadow-sm'
-                  : 'bg-white/5 hover:bg-white/10 border-white/10'
-              }`}
-            >
-              <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0 text-[#C49A6C]">
-                <Users size={16} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-extrabold text-white truncate">Staff Login</div>
-                <div className="text-[9px] text-[#A39E98] truncate">Keshav, Adil &amp; All Staff</div>
-              </div>
-            </button>
-          </div>
-
-          <p className="text-[10px] text-[#A39E98] text-center mt-3 leading-relaxed">
-            Staff Login me har employee (Keshav, Adil, etc.) apna apna ID aur password daalega, to system unhe unke hi personal dashboard me le jayega.
-          </p>
-        </div>
-
         <p className="text-[10px] text-[#71717A] text-center mt-5">
           &copy; {new Date().getFullYear()} SHAHIN STEEL FURNITURE &bull; All Rights Reserved
         </p>
