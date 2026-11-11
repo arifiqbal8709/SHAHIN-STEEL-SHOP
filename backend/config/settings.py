@@ -80,6 +80,7 @@ if DATABASE_URL:
     # Universal Cloud Database Connection String (Neon, Supabase, Render, Railway, Aiven)
     parsed = urllib.parse.urlparse(DATABASE_URL)
     is_postgres = 'postgres' in parsed.scheme
+    query_params = urllib.parse.parse_qs(parsed.query)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql' if is_postgres else 'django.db.backends.mysql',
@@ -90,7 +91,11 @@ if DATABASE_URL:
             'PORT': str(parsed.port or (5432 if is_postgres else 3306)),
         }
     }
-    if not is_postgres:
+    if is_postgres:
+        sslmode = query_params.get('sslmode', [None])[0]
+        if sslmode:
+            DATABASES['default']['OPTIONS'] = {'sslmode': sslmode}
+    else:
         DATABASES['default']['OPTIONS'] = {
             'charset': 'utf8mb4',
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",

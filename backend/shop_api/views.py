@@ -1989,22 +1989,22 @@ def staff_attendance_history(request):
     if emp:
         records = records.filter(employee=emp)
 
-    records = records[:60]
-    days_present = records.filter(status='PRESENT').count()
-    days_half = records.filter(status='HALF_DAY').count()
-    days_leave = records.filter(status='LEAVE').count()
-    total_hours = float(records.aggregate(h=Sum('working_hours'))['h'] or 0)
+    recent_records = list(records[:60])
+    days_present = sum(1 for r in recent_records if r.status == 'PRESENT')
+    days_half = sum(1 for r in recent_records if r.status == 'HALF_DAY')
+    days_leave = sum(1 for r in recent_records if r.status == 'LEAVE')
+    total_hours = float(sum((r.working_hours or 0) for r in recent_records))
 
     return Response({
         'success': True,
-        'count': records.count(),
+        'count': len(recent_records),
         'summary': {
             'days_present': days_present,
             'days_half_day': days_half,
             'days_leave': days_leave,
             'total_hours': total_hours,
         },
-        'data': AttendanceSerializer(records, many=True).data
+        'data': AttendanceSerializer(recent_records, many=True).data
     })
 
 @api_view(['GET'])
