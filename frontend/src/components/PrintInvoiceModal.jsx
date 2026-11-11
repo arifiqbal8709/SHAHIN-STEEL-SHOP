@@ -62,6 +62,7 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
   const invoiceDateStr = sale.sale_date
     ? new Date(sale.sale_date).toISOString().slice(0, 10)
     : new Date().toISOString().slice(0, 10);
+  const customerAddress = (sale.customer_address || sale.customer?.address || '').trim() || 'N/A';
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
@@ -159,7 +160,7 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
               <div className="p-2 border-r border-black space-y-0.5">
                 <p className="font-bold underline text-[11px]">Customer Details :</p>
                 <p><span className="font-bold">Customer Name :</span> {sale.customer_name || 'ARIF'}</p>
-                <p><span className="font-bold">Address :</span> {sale.customer_address || "COLONEL'S PUBLIC SCHOOL, BOKARO"}</p>
+                <p><span className="font-bold">Address :</span> {customerAddress}</p>
                 <p><span className="font-bold">Place of Supply :</span> {sale.customer_city || 'BOKARO, JHARKHAND'}</p>
                 <p><span className="font-bold">GSTIN :</span> N/A</p>
                 <p><span className="font-bold">State Code :</span> 20</p>
@@ -169,7 +170,7 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
               <div className="p-2 space-y-0.5">
                 <p className="font-bold underline text-[11px]">Shipping Details :</p>
                 <p><span className="font-bold">Customer Name :</span> {sale.customer_name || 'ARIF'}</p>
-                <p><span className="font-bold">Address :</span> {sale.customer_address || "COLONEL'S PUBLIC SCHOOL, BOKARO"}</p>
+                <p><span className="font-bold">Address :</span> {customerAddress}</p>
                 <p><span className="font-bold">Place of Supply :</span> {sale.customer_city || 'BOKARO, JHARKHAND'}</p>
                 <p><span className="font-bold">GSTIN :</span> N/A</p>
                 <p><span className="font-bold">State Code :</span> 20</p>

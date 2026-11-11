@@ -12,8 +12,8 @@ const TaxInvoice = () => {
     invoice_number: 'TAX-001',
     sale_date: '2026-11-08',
     customer_name: 'ARIF',
-    customer_address: "COLONEL'S PUBLIC SCHOOL",
-    customer_city: "COLONEL'S PUBLIC SCHOOL",
+    customer_address: 'N/A',
+    customer_city: 'BOKARO, JHARKHAND',
     items: [
       { product_name: 'CHAIR', quantity: 5, unit_selling_price: 500, discount_amount: 0 },
       { product_name: 'CHAIR', quantity: 1, unit_selling_price: 500, discount_amount: 0 },
@@ -65,6 +65,8 @@ const TaxInvoice = () => {
   const invoiceDateStr = sale.sale_date
     ? new Date(sale.sale_date).toISOString().slice(0, 10)
     : '2026-11-08';
+  const customerAddress = (sale.customer_address || sale.customer?.address || '').trim() || 'N/A';
+  const customerCity = (sale.customer_city || sale.customer?.city || '').trim() || 'BOKARO, JHARKHAND';
 
   return (
     <div className="min-h-screen bg-stone-100 p-4 sm:p-8 print:min-h-0 print:p-0 print:m-0 print:bg-white">
@@ -129,8 +131,8 @@ const TaxInvoice = () => {
           <div className="p-2 border-r border-black space-y-0.5">
             <p className="font-bold underline text-[11px]">Customer Details :</p>
             <p><span className="font-bold">Customer Name :</span> {sale.customer_name || 'ARIF'}</p>
-            <p><span className="font-bold">Address :</span> {sale.customer_address || "COLONEL'S PUBLIC SCHOOL"}</p>
-            <p><span className="font-bold">Place of Supply :</span> {sale.customer_city || "COLONEL'S PUBLIC SCHOOL"}</p>
+            <p><span className="font-bold">Address :</span> {customerAddress}</p>
+            <p><span className="font-bold">Place of Supply :</span> {customerCity}</p>
             <p><span className="font-bold">GSTIN :</span> N/A</p>
             <p><span className="font-bold">State Code :</span> 20</p>
           </div>
@@ -138,8 +140,8 @@ const TaxInvoice = () => {
           <div className="p-2 space-y-0.5">
             <p className="font-bold underline text-[11px]">Shipping Details :</p>
             <p><span className="font-bold">Customer Name :</span> {sale.customer_name || 'ARIF'}</p>
-            <p><span className="font-bold">Address :</span> {sale.customer_address || "COLONEL'S PUBLIC SCHOOL"}</p>
-            <p><span className="font-bold">Place of Supply :</span> {sale.customer_city || "COLONEL'S PUBLIC SCHOOL"}</p>
+            <p><span className="font-bold">Address :</span> {customerAddress}</p>
+            <p><span className="font-bold">Place of Supply :</span> {customerCity}</p>
             <p><span className="font-bold">GSTIN :</span> N/A</p>
             <p><span className="font-bold">State Code :</span> 20</p>
           </div>

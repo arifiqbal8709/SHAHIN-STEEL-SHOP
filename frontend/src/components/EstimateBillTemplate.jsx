@@ -45,7 +45,7 @@ const EstimateBillTemplate = ({ sale }) => {
 
   const customerName = sale.customer_name || sale.customer?.name || 'Walk-in Customer';
   const customerPhone = sale.customer_phone || sale.customer?.phone || 'N/A';
-  const customerAddress = sale.customer_address || sale.customer?.address || 'Chas, Bokaro, Jharkhand';
+  const customerAddress = (sale.customer_address || sale.customer?.address || '').trim() || 'N/A';
 
   // Exactly 8 numbered rows as in the reference template
   const totalDisplayRows = Math.max(8, rawItems.length);

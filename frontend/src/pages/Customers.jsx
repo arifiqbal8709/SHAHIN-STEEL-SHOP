@@ -472,7 +472,7 @@ const Customers = () => {
                       <td className="text-xs text-[#71717A] max-w-xs">
                         <span className="flex items-start gap-1">
                           <MapPin size={12} className="text-[#A39E98] shrink-0 mt-0.5" />
-                          <span className="truncate">{c.address || 'Chas, Bokaro, Jharkhand'}</span>
+                          <span className="truncate">{(c.address || '').trim() || 'N/A'}</span>
                         </span>
                       </td>
                       <td className="font-bold text-xs text-[#211F1C]">{fmt(c.total_spent)}</td>
