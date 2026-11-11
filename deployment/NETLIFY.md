@@ -49,3 +49,4 @@ The repository includes:
 - `frontend/public/_redirects` (`/* /index.html 200`)
 
 This ensures you can refresh any page (`/dashboard`, `/sales`, `/customers`, `/attendance`, etc.) directly in the browser without encountering a 404 error!
+
