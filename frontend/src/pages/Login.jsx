@@ -8,10 +8,8 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  CheckCircle2,
   Users,
-  Smartphone,
-  KeyRound
+  Smartphone
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -25,7 +23,6 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [successHint, setSuccessHint] = useState('');
 
   const usernameInputRef = useRef(null);
   const passwordInputRef = useRef(null);
@@ -46,7 +43,6 @@ const Login = () => {
       setPassword('');
     }
     setErrorMsg('');
-    setSuccessHint('Staff Portal selected. Har staff (Keshav, Adil, etc.) apna ID aur Password daal kar login karein.');
     setTimeout(() => {
       if (usernameInputRef.current) usernameInputRef.current.focus();
     }, 100);
@@ -58,7 +54,6 @@ const Login = () => {
     setUsername('admin');
     setPassword('admin123');
     setErrorMsg('');
-    setSuccessHint('Owner / Admin credentials loaded (admin / admin123).');
   };
 
   const handleLogin = async (e) => {
@@ -166,14 +161,6 @@ const Login = () => {
             <span className="text-[10px] text-[#C49A6C] font-semibold">Keshav, Adil, etc.</span>
           )}
         </div>
-
-        {/* Success / Status Hint Banner */}
-        {successHint && (
-          <div className="mt-3 p-2.5 bg-[#C49A6C]/15 border border-[#C49A6C]/30 rounded-xl text-xs text-[#E8D1B5] flex items-center gap-2 animate-fadeIn">
-            <CheckCircle2 size={15} className="text-[#C49A6C] shrink-0" />
-            <span className="text-[11px] leading-tight">{successHint}</span>
-          </div>
-        )}
 
         {/* Error Alert */}
         {errorMsg && (
