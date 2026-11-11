@@ -78,8 +78,9 @@ const AttendancePage = () => {
     return () => window.removeEventListener('shahin-cloud-sync', loadAttendance);
   }, [selectedEmp]);
 
-  // Check today's status for active user
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Check today's status for active user in local showroom calendar date
+  const nowLocal = new Date();
+  const todayStr = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, '0')}-${String(nowLocal.getDate()).padStart(2, '0')}`;
   const myEmployeeId = user?.employee_id;
   const todayRecord = records.find(r => 
     r.date === todayStr && 

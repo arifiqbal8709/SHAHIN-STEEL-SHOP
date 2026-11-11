@@ -29,6 +29,24 @@ from .serializers import (
 )
 
 # -----------------------------------------------------------------------------
+# TIMEZONE & GREETING HELPERS (Asia/Kolkata local time)
+# -----------------------------------------------------------------------------
+def get_local_now():
+    """Return the current datetime in the configured showroom timezone."""
+    return timezone.localtime(timezone.now())
+
+
+def get_time_greeting(dt):
+    """Return an appropriate time-of-day greeting for a local datetime."""
+    hour = dt.hour
+    if 5 <= hour < 12:
+        return "Good morning"
+    if 12 <= hour < 17:
+        return "Good afternoon"
+    return "Good evening"
+
+
+# -----------------------------------------------------------------------------
 # 1. AUTHENTICATION & MULTI-DEVICE LOGIN
 # -----------------------------------------------------------------------------
 def get_request_user_and_employee(request):
@@ -312,7 +330,7 @@ def active_staff_logins(request):
 @permission_classes([AllowAny])
 def dashboard_stats(request):
     period = request.GET.get('period', 'monthly').lower()
-    now = timezone.now()
+    now = get_local_now()
 
     if period == 'daily':
         start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -391,7 +409,7 @@ def dashboard_stats(request):
             'id': s.id,
             'invoice_number': s.invoice_number,
             'customer_name': s.customer.name,
-            'date': s.sale_date.strftime('%d %b %Y, %I:%M %p'),
+            'date': timezone.localtime(s.sale_date).strftime('%d %b %Y, %I:%M %p'),
             'amount': float(s.grand_total),
             'amount_paid': float(s.amount_paid),
             'balance': float(s.balance_amount),
@@ -699,8 +717,9 @@ def sales_list_create(request):
                 customer.save()
 
             # 2. Generate Unique Invoice Number
-            today_str = datetime.now().strftime('%Y%m%d')
-            count_today = Sale.objects.filter(sale_date__date=date.today()).count() + 1
+            today = timezone.localdate()
+            today_str = today.strftime('%Y%m%d')
+            count_today = Sale.objects.filter(sale_date__date=today).count() + 1
             prefix = "EST" if invoice_type == 'ESTIMATE_BILL' else "SSF"
             invoice_num = f"{prefix}-{today_str}-{count_today:03d}"
 
@@ -873,13 +892,13 @@ def sales_list_create(request):
                     paid_amount=Decimal('0.00'),
                     remaining_balance=principal,
                     status='ACTIVE',
-                    start_date=date.today(),
+                    start_date=today,
                     due_day_of_month=int(emi_plan.get('due_day', 5))
                 )
 
                 # Generate EMI Installment Schedules
                 due_day = int(emi_plan.get('due_day', 5))
-                current_date = date.today()
+                current_date = today
                 for i in range(1, total_months + 1):
                     # Next month due date
                     month = (current_date.month + i - 1) % 12 + 1
@@ -1125,7 +1144,7 @@ def record_emi_payment(request, installment_id):
 
     with transaction.atomic():
         installment.paid_amount = paid_amt
-        installment.paid_date = date.today()
+        installment.paid_date = timezone.localdate()
         installment.status = 'PAID'
         installment.payment_mode = mode
         installment.transaction_ref = tx_ref
@@ -1205,7 +1224,7 @@ def purchase_list_create(request):
             purchase = Purchase.objects.create(
                 purchase_invoice_no=inv_no,
                 supplier=supplier,
-                purchase_date=data.get('purchase_date', date.today()),
+                purchase_date=data.get('purchase_date', timezone.localdate()),
                 total_amount=total_amount,
                 paid_amount=paid_amount,
                 balance_amount=max(Decimal('0.00'), bal),
@@ -1262,7 +1281,7 @@ def profit_loss_report(request):
         }, status=status.HTTP_403_FORBIDDEN)
 
     period = request.GET.get('period', 'monthly')
-    now = timezone.now()
+    now = get_local_now()
 
     if period == 'daily':
         start_date = now.replace(hour=0, minute=0, second=0)
@@ -1319,7 +1338,7 @@ def expense_list_create(request):
             expense_code=f"EXP-{uuid.uuid4().hex[:6].upper()}",
             category=data.get('category', 'MISCELLANEOUS'),
             amount=Decimal(str(data.get('amount', 0))),
-            expense_date=data.get('expense_date', date.today()),
+            expense_date=data.get('expense_date', timezone.localdate()),
             payment_mode=data.get('payment_mode', 'CASH'),
             paid_to=data.get('paid_to', ''),
             description=data.get('description', '')
@@ -1346,7 +1365,7 @@ def employee_list_create(request):
         include_inactive = request.GET.get('all', 'true') == 'true'
         employees = Employee.objects.all().order_by('name') if include_inactive else Employee.objects.filter(is_active=True).order_by('name')
 
-        today = date.today()
+        today = timezone.localdate()
         all_sales = Sale.objects.all()
         today_sales_all = all_sales.filter(sale_date__date=today)
         today_attendance = {att.employee_id: att for att in Attendance.objects.filter(date=today)}
@@ -1437,7 +1456,7 @@ def employee_list_create(request):
                 email=data.get('email', ''),
                 designation=data.get('designation', 'Sales Executive'),
                 base_salary=Decimal(str(data.get('base_salary', data.get('monthly_salary', 0)))),
-                joining_date=data.get('joining_date', date.today()),
+                joining_date=data.get('joining_date', timezone.localdate()),
                 address=data.get('address', ''),
                 emergency_contact=data.get('emergency_contact', ''),
                 is_active=data.get('is_active', True),
@@ -1678,7 +1697,7 @@ def staff_dashboard_stats(request):
     if not emp:
         emp = Employee.objects.first()
 
-    today = date.today()
+    today = timezone.localdate()
 
     # Sales by this staff member
     if emp and emp.user:
@@ -1732,7 +1751,7 @@ def staff_dashboard_stats(request):
             'amount': float(s.grand_total),
             'amount_paid': float(s.amount_paid),
             'payment_type': s.payment_type,
-            'date': s.sale_date.strftime('%d %b %Y, %I:%M %p')
+            'date': timezone.localtime(s.sale_date).strftime('%d %b %Y, %I:%M %p')
         })
 
     # Weekly Personal Sales Trend (last 7 days)
@@ -1794,7 +1813,8 @@ def staff_attendance_check_in(request):
     if not emp:
         return Response({'success': False, 'message': 'Employee record not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-    today = date.today()
+    local_now = get_local_now()
+    today = local_now.date()
     att = Attendance.objects.filter(employee=emp, date=today).first()
 
     if att and att.check_in_time:
@@ -1804,7 +1824,7 @@ def staff_attendance_check_in(request):
             'data': AttendanceSerializer(att).data
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    now_time = timezone.now().time()
+    now_time = local_now.time()
     if not att:
         att = Attendance.objects.create(
             employee=emp,
@@ -1820,7 +1840,7 @@ def staff_attendance_check_in(request):
 
     return Response({
         'success': True,
-        'message': f"Good morning, {emp.name}! Checked in at {now_time.strftime('%I:%M %p')}.",
+        'message': f"{get_time_greeting(local_now)}, {emp.name}! Checked in at {now_time.strftime('%I:%M %p')}.",
         'data': AttendanceSerializer(att).data
     })
 
@@ -1846,7 +1866,8 @@ def staff_attendance_check_out(request):
     if not emp:
         return Response({'success': False, 'message': 'Employee record not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-    today = date.today()
+    local_now = get_local_now()
+    today = local_now.date()
     att = Attendance.objects.filter(employee=emp, date=today).first()
 
     if not att or not att.check_in_time:
@@ -1855,7 +1876,7 @@ def staff_attendance_check_out(request):
             'message': 'Cannot check out: You must check in first before checking out.'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    now_time = timezone.now().time()
+    now_time = local_now.time()
     att.check_out_time = now_time
 
     # Calculate working hours
@@ -1898,8 +1919,9 @@ def staff_mark_half_day(request):
     if not emp:
         return Response({'success': False, 'message': 'Employee record not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-    today = date.today()
-    now_time = timezone.now().time()
+    local_now = get_local_now()
+    today = local_now.date()
+    now_time = local_now.time()
     notes = request.data.get('notes') or request.data.get('reason') or 'Half Day Leave'
 
     att = Attendance.objects.filter(employee=emp, date=today).first()
@@ -1951,7 +1973,7 @@ def staff_mark_leave(request):
     if not emp:
         return Response({'success': False, 'message': 'Employee record not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-    today = date.today()
+    today = timezone.localdate()
     reason = request.data.get('notes') or request.data.get('reason') or 'Full Day Leave'
     att, created = Attendance.objects.update_or_create(
         employee=emp,
@@ -2032,7 +2054,7 @@ def staff_my_profile(request):
     invoices_count = sales.count()
 
     # Attendance stats for this month
-    this_month = date.today().replace(day=1)
+    this_month = timezone.localdate().replace(day=1)
     month_att = Attendance.objects.filter(employee=emp, date__gte=this_month)
     present_days = month_att.filter(status='PRESENT').count()
     total_month_hours = float(month_att.aggregate(h=Sum('working_hours'))['h'] or 0)
@@ -2079,7 +2101,7 @@ def cash_register_list_create(request):
     """
     Daily Opening & Closing Balance Management for showroom counters/employees.
     """
-    today = date.today()
+    today = timezone.localdate()
     if request.method == 'GET':
         # Auto compute today's cash and upi sales from Payments
         today_cash = Payment.objects.filter(payment_date__date=today, payment_mode='CASH').aggregate(tot=Sum('amount'))['tot'] or Decimal('0.00')
@@ -2168,7 +2190,7 @@ def cash_register_close(request, pk):
 def record_attendance(request):
     data = request.data
     emp_id = data.get('employee_id')
-    att_date = data.get('date', date.today())
+    att_date = data.get('date', timezone.localdate())
     status_val = data.get('status', 'PRESENT')
 
     att, created = Attendance.objects.update_or_create(
@@ -2311,7 +2333,7 @@ def employee_sales_monitoring_report(request):
     filter_type = request.GET.get('filter_type', 'today').lower()
     target_emp_id = request.GET.get('employee_id', '')
 
-    today = date.today()
+    today = timezone.localdate()
     this_month_start = today.replace(day=1)
     yesterday = today - timedelta(days=1)
 
@@ -2500,7 +2522,7 @@ def employee_sales_monitoring_report(request):
             'employee_code': rep_code,
             'customer_name': s.customer.name,
             'customer_phone': s.customer.phone,
-            'sale_date': s.sale_date.strftime('%d %b %Y, %I:%M %p'),
+            'sale_date': timezone.localtime(s.sale_date).strftime('%d %b %Y, %I:%M %p'),
             'products': items_breakdown,
             'total_products_count': sum(i['quantity'] for i in items_breakdown),
             'grand_total': float(s.grand_total),
@@ -2512,7 +2534,7 @@ def employee_sales_monitoring_report(request):
             'is_emi_sale': s.is_emi_sale,
             'is_cancelled': s.is_cancelled,
             'cancellation_reason': s.cancellation_reason,
-            'cancelled_at': s.cancelled_at.strftime('%d %b %Y, %I:%M %p') if s.cancelled_at else None
+            'cancelled_at': timezone.localtime(s.cancelled_at).strftime('%d %b %Y, %I:%M %p') if s.cancelled_at else None
         })
 
     return Response({
@@ -2562,7 +2584,7 @@ def salary_list_create(request):
         if month_filter:
             records = records.filter(month=month_filter)
 
-        current_month_str = date.today().strftime('%B %Y')
+        current_month_str = timezone.localdate().strftime('%B %Y')
         employees = Employee.objects.all().order_by('name')
         emp_summaries = []
 
@@ -2610,7 +2632,7 @@ def salary_list_create(request):
         if not emp:
             return Response({'success': False, 'message': 'Employee not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        month = data.get('month', date.today().strftime('%B %Y'))
+        month = data.get('month', timezone.localdate().strftime('%B %Y'))
         rec_type = data.get('record_type', 'SALARY').upper() # 'SALARY' or 'ADVANCE'
         monthly_sal = Decimal(str(data.get('monthly_salary', emp.base_salary)))
         amount_paid = Decimal(str(data.get('amount_paid', 0)))
@@ -2623,7 +2645,7 @@ def salary_list_create(request):
             remaining = max(Decimal('0.00'), monthly_sal - advance_deducted - amount_paid)
             rec_status = 'PAID' if remaining <= Decimal('0.00') else ('PARTIAL' if amount_paid > 0 else 'PENDING')
 
-        pay_date = data.get('payment_date', date.today())
+        pay_date = data.get('payment_date', timezone.localdate())
         pay_mode = data.get('payment_mode', 'CASH').upper()
         notes = data.get('notes', '')
 
@@ -2704,7 +2726,7 @@ def admin_mark_attendance(request):
     req_user, req_emp, req_role = get_request_user_and_employee(request)
     data = request.data
     emp_id = data.get('employee_id')
-    att_date = data.get('date', date.today())
+    att_date = data.get('date', timezone.localdate())
     status_val = data.get('status', 'PRESENT').upper()
     notes = data.get('notes', '')
     hours = data.get('working_hours')
