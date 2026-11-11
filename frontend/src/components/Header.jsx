@@ -41,7 +41,7 @@ const Header = ({ setIsSidebarOpen }) => {
         {/* Date Display */}
         <div className="hidden sm:block text-right pr-2">
           <p className="text-xs font-semibold text-[#211F1C]">{formattedDate}</p>
-          <p className="text-[10px] text-[#A39E98] tracking-wider uppercase font-medium">Ranchi Showroom</p>
+          <p className="text-[10px] text-[#A39E98] tracking-wider uppercase font-medium">Bokaro Showroom</p>
         </div>
 
         {/* Create Bill Quick Button */}
