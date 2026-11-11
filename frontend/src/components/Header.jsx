@@ -1,12 +1,10 @@
 import React from 'react';
-import { Menu, RefreshCw, Plus, ShieldCheck, User } from 'lucide-react';
+import { Menu, Plus, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useSync } from '../context/SyncContext';
 
 const Header = ({ setIsSidebarOpen }) => {
   const { user } = useAuth();
-  const { isSynced, syncStatusText, forceSyncNow } = useSync();
   const navigate = useNavigate();
 
   const formattedDate = new Intl.DateTimeFormat('en-IN', {
@@ -38,26 +36,8 @@ const Header = ({ setIsSidebarOpen }) => {
         </div>
       </div>
 
-      {/* Right: Cloud Sync Status, Date & Quick Actions */}
+      {/* Right: Date & Quick Actions */}
       <div className="flex items-center gap-2 sm:gap-4">
-        {/* Multi-Device Cloud Sync Indicator (Instagram Experience) */}
-        <div
-          onClick={forceSyncNow}
-          title="Click to manually refresh cloud data"
-          className="cursor-pointer hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#E5E2DE] shadow-subtle hover:border-[#C49A6C] transition-all"
-        >
-          <span className="relative flex h-2 w-2">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isSynced ? 'bg-emerald-400 opacity-75' : 'bg-amber-400 opacity-75'}`}></span>
-            <span className={`relative inline-flex rounded-full h-2 w-2 ${isSynced ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
-          </span>
-          <span className="text-[11px] font-bold text-[#211F1C]">
-            {isSynced ? 'Cloud Synced' : 'Syncing...'}
-          </span>
-          <span className="text-[10px] text-[#A39E98] border-l border-[#E5E2DE] pl-2 hidden lg:inline">
-            MySQL Cloud
-          </span>
-        </div>
-
         {/* Date Display */}
         <div className="hidden sm:block text-right pr-2">
           <p className="text-xs font-semibold text-[#211F1C]">{formattedDate}</p>
