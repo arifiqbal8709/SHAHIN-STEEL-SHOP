@@ -32,28 +32,14 @@ const Login = () => {
     // If user has already entered credentials or is logged in, preserve state
   }, []);
 
-  // Switch to Staff Portal - DO NOT clear manual data entered by user!
-  const selectStaffPortal = () => {
-    setActivePortal('STAFF');
-    // Only clear if previous value was admin auto-fill
-    if (username.toLowerCase() === 'admin') {
-      setUsername('');
-    }
-    if (password === 'admin123') {
-      setPassword('');
-    }
+  const switchPortal = (portal) => {
+    setActivePortal(portal);
+    setUsername('');
+    setPassword('');
     setErrorMsg('');
     setTimeout(() => {
       if (usernameInputRef.current) usernameInputRef.current.focus();
     }, 100);
-  };
-
-  // Switch to Admin Portal
-  const selectAdminPortal = () => {
-    setActivePortal('ADMIN');
-    setUsername('admin');
-    setPassword('admin123');
-    setErrorMsg('');
   };
 
   const handleLogin = async (e) => {
@@ -114,7 +100,7 @@ const Login = () => {
           {/* 1. Staff Login Tab */}
           <button
             type="button"
-            onClick={selectStaffPortal}
+            onClick={() => switchPortal('STAFF')}
             className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
               activePortal === 'STAFF'
                 ? 'bg-[#C49A6C] text-[#211F1C] shadow-gold-glow'
@@ -128,7 +114,7 @@ const Login = () => {
           {/* 2. Admin Tab */}
           <button
             type="button"
-            onClick={selectAdminPortal}
+            onClick={() => switchPortal('ADMIN')}
             className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
               activePortal === 'ADMIN'
                 ? 'bg-[#C49A6C] text-[#211F1C] shadow-gold-glow'
@@ -183,7 +169,7 @@ const Login = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 bg-white/5 rounded-xl border border-white/10 text-xs text-white focus:outline-none focus:border-[#C49A6C] transition-all font-medium"
-                placeholder={activePortal === 'ADMIN' ? 'admin' : 'Enter your Staff ID or Login ID'}
+                placeholder={activePortal === 'ADMIN' ? 'Enter Admin username' : 'Enter your Staff ID or Login ID'}
               />
             </div>
           </div>
