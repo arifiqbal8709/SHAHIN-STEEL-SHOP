@@ -65,7 +65,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# ─── DATABASE CONFIGURATION (MySQL with graceful local SQLite fallback) ─────────
+# ─── DATABASE CONFIGURATION (Cloud DATABASE_URL, MySQL, or local SQLite fallback) ─────────
+import urllib.parse
+
+DATABASE_URL = os.getenv('DATABASE_URL')
 DB_ENGINE = os.getenv('DB_ENGINE', 'mysql')
 DB_NAME = os.getenv('DB_NAME', 'shahin_furniture_db')
 DB_USER = os.getenv('DB_USER', 'root')
@@ -73,7 +76,26 @@ DB_PASSWORD = os.getenv('DB_PASSWORD', '')
 DB_HOST = os.getenv('DB_HOST', '127.0.0.1')
 DB_PORT = os.getenv('DB_PORT', '3306')
 
-if DB_ENGINE == 'mysql' and os.getenv('USE_MYSQL', 'False') == 'True':
+if DATABASE_URL:
+    # Universal Cloud Database Connection String (Neon, Supabase, Render, Railway, Aiven)
+    parsed = urllib.parse.urlparse(DATABASE_URL)
+    is_postgres = 'postgres' in parsed.scheme
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql' if is_postgres else 'django.db.backends.mysql',
+            'NAME': parsed.path.lstrip('/'),
+            'USER': parsed.username or '',
+            'PASSWORD': urllib.parse.unquote(parsed.password or ''),
+            'HOST': parsed.hostname or '127.0.0.1',
+            'PORT': str(parsed.port or (5432 if is_postgres else 3306)),
+        }
+    }
+    if not is_postgres:
+        DATABASES['default']['OPTIONS'] = {
+            'charset': 'utf8mb4',
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        }
+elif DB_ENGINE == 'mysql' and os.getenv('USE_MYSQL', 'False') == 'True':
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
