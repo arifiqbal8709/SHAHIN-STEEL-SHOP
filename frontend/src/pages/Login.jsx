@@ -184,7 +184,7 @@ const Login = () => {
         )}
 
         {/* Credentials Form */}
-        <form onSubmit={handleLogin} className="space-y-4 mt-4">
+        <form onSubmit={handleLogin} autoComplete="off" className="space-y-4 mt-4">
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-[#A39E98] mb-1.5">
               {activePortal === 'ADMIN' ? 'Admin Username' : 'Staff Login ID / Staff ID / Name'}
@@ -194,6 +194,7 @@ const Login = () => {
               <input
                 ref={usernameInputRef}
                 type="text"
+                autoComplete="off"
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -208,22 +209,21 @@ const Login = () => {
               <label className="block text-[11px] font-bold uppercase tracking-wider text-[#A39E98]">
                 {activePortal === 'ADMIN' ? 'Admin Password' : 'Password'}
               </label>
-              {activePortal === 'STAFF' && (
-                <button
-                  type="button"
-                  onClick={() => setPassword('staff123')}
-                  className="text-[10px] text-[#C49A6C] hover:underline font-bold"
-                  title="Default showroom password"
-                >
-                  Default: staff123
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setPassword(activePortal === 'ADMIN' ? 'admin123' : 'staff123')}
+                className="text-[10px] text-[#C49A6C] hover:underline font-bold"
+                title="Fill default password"
+              >
+                {activePortal === 'ADMIN' ? 'Default: admin123' : 'Default: staff123'}
+              </button>
             </div>
             <div className="relative">
               <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A39E98]" />
               <input
                 ref={passwordInputRef}
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

@@ -46,6 +46,16 @@ def get_time_greeting(dt):
     return "Good evening"
 
 
+def is_owner_user(user):
+    """Return True if user is the primary admin, superuser, or has OWNER profile role."""
+    if not user or not user.is_authenticated:
+        return False
+    if user.username == 'admin' or user.is_superuser:
+        return True
+    profile = getattr(user, 'profile', None)
+    return bool(profile and profile.role and profile.role.name == 'OWNER')
+
+
 # -----------------------------------------------------------------------------
 # 1. AUTHENTICATION & MULTI-DEVICE LOGIN
 # -----------------------------------------------------------------------------
@@ -70,8 +80,7 @@ def get_request_user_and_employee(request):
     if not user or not user.is_authenticated:
         return None, None, 'ANONYMOUS'
 
-    # STRICT: Only 'admin' or superuser is OWNER! Admin is one!
-    is_owner = (user.username == 'admin' or user.is_superuser)
+    is_owner = is_owner_user(user)
     role_name = 'OWNER' if is_owner else 'EMPLOYEE'
 
     employee = getattr(user, 'employee_record', None)
@@ -83,8 +92,7 @@ def build_user_payload(user, profile=None):
     if not profile:
         profile = getattr(user, 'profile', None)
 
-    # STRICT: Only 'admin' or superuser is OWNER! Admin is one!
-    is_owner = (user.username == 'admin' or user.is_superuser)
+    is_owner = is_owner_user(user)
     role_name = 'OWNER' if is_owner else 'EMPLOYEE'
 
     employee = getattr(user, 'employee_record', None)
@@ -215,8 +223,8 @@ def login_view(request):
             'message': 'This staff account has been deactivated. Please contact the showroom owner.'
         }, status=status.HTTP_403_FORBIDDEN)
 
-    # STRICT ROLE ASSIGNMENT: Only 'admin' or superuser is OWNER! Admin is one!
-    is_owner = (user.username == 'admin' or user.is_superuser)
+    # STRICT ROLE ASSIGNMENT: Preserve OWNER role via is_owner_user
+    is_owner = is_owner_user(user)
     role_name = 'OWNER' if is_owner else 'EMPLOYEE'
     role, _ = Role.objects.get_or_create(
         name=role_name,
@@ -1510,7 +1518,7 @@ def staff_detail_update(request, pk):
         if 'monthly_salary' in data: emp.base_salary = Decimal(str(data['monthly_salary']))
         elif 'base_salary' in data: emp.base_salary = Decimal(str(data['base_salary']))
         if 'joining_date' in data and data['joining_date']: emp.joining_date = data['joining_date']
-        if 'is_active' in data:
+        if 'is_active' in data and not is_owner_user(emp.user):
             emp.is_active = bool(data['is_active'])
             if emp.user:
                 emp.user.is_active = emp.is_active
@@ -1532,7 +1540,9 @@ def staff_detail_update(request, pk):
             else:
                 if User.objects.filter(username__iexact=new_u).exclude(pk=emp.user.pk).exists():
                     return Response({'success': False, 'message': f"Login ID '{new_u}' is already taken. Please choose another Login ID."}, status=status.HTTP_400_BAD_REQUEST)
-                emp.user.username = new_u
+                # Keep primary 'admin' username intact so Owner quick-login always works
+                if not (emp.user.username == 'admin' and new_u != 'admin'):
+                    emp.user.username = new_u
                 if 'password' in data and data['password'].strip():
                     emp.user.set_password(data['password'].strip())
                 emp.user.save()
@@ -1547,6 +1557,8 @@ def staff_detail_update(request, pk):
         })
 
     elif request.method == 'DELETE':
+        if is_owner_user(emp.user):
+            return Response({'success': False, 'message': 'Primary Store Owner (admin) account cannot be deactivated.'}, status=status.HTTP_400_BAD_REQUEST)
         # NEVER hard delete employee or user: past sales, invoices and payment records must stay 100% intact forever!
         emp_name = emp.name
         emp.is_active = False
