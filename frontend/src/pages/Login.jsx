@@ -158,7 +158,7 @@ const Login = () => {
               <>
                 <span className="w-2 h-2 rounded-full bg-[#C49A6C] animate-pulse" />
                 <span className="text-[#C49A6C] font-bold text-[11px]">Store Owner Portal</span>
-                <span className="text-[#A39E98] text-[10px] hidden sm:inline">&bull; Arif Shahin</span>
+                <span className="text-[#A39E98] text-[10px] hidden sm:inline">&bull; Shahin Steel</span>
               </>
             )}
           </div>
@@ -275,7 +275,7 @@ const Login = () => {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-[11px] font-extrabold text-white truncate">Owner (Admin)</div>
-                <div className="text-[9px] text-[#A39E98] truncate">Arif Shahin &bull; admin</div>
+                <div className="text-[9px] text-[#A39E98] truncate">Shahin Steel &bull; admin</div>
               </div>
             </button>
 

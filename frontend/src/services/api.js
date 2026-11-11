@@ -262,7 +262,7 @@ export const authAPI = {
           employee_code: isOwner ? 'ADMIN-01' : staffCode,
           role: role,
           display_name: isOwner ? 'Store Owner / Admin' : staffName,
-          name: isOwner ? 'Arif Shahin' : staffName,
+          name: isOwner ? 'Shahin Steel' : staffName,
           designation: isOwner ? 'Store Owner' : (matchedEmp?.designation || 'Sales Staff'),
           permissions: {
             can_manage_sales: true,
@@ -979,7 +979,7 @@ export const employeesAPI = {
             id: s.id,
             invoice_number: s.invoice_number,
             invoice_type: s.invoice_type || 'TAX_INVOICE',
-            employee_name: s.sales_rep_name || 'Arif Shahin',
+            employee_name: s.sales_rep_name || 'Shahin Steel',
             employee_code: s.sales_rep_code || 'EMP-001',
             customer_name: s.customer_name,
             customer_phone: s.customer_phone,
@@ -1243,7 +1243,7 @@ export const salariesAPI = {
             {
               id: 1,
               employee: 1,
-              employee_name: 'Arif Shahin',
+              employee_name: 'Shahin Steel',
               employee_code: 'EMP-001',
               month: 'November 2026',
               monthly_salary: '25000.00',

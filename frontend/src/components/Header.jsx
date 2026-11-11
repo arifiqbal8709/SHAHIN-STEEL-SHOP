@@ -80,7 +80,9 @@ const Header = ({ setIsSidebarOpen }) => {
           </div>
           <div className="hidden xl:block text-left">
             <p className="text-xs font-bold text-[#211F1C] leading-none">
-              {user?.name || user?.display_name || user?.username || 'User'}
+              {user?.role === 'OWNER' && (!user?.name || user?.name === 'Arif Shahin')
+                ? 'Shahin Steel'
+                : (user?.name || user?.display_name || user?.username || 'User')}
             </p>
             <span className="text-[9px] font-extrabold uppercase text-[#C49A6C] tracking-wide">
               {user?.role === 'OWNER' ? 'Admin / Owner' : 'Sales Staff'}

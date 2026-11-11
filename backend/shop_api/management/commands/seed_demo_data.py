@@ -67,7 +67,7 @@ class Command(BaseCommand):
 
         # 3. Employees
         employees_data = [
-            {'code': 'EMP-001', 'name': 'Arif Shahin', 'phone': '+91 98765 43210', 'role': 'Store Manager', 'sal': 35000, 'user': owner_user},
+            {'code': 'EMP-001', 'name': 'Shahin Steel', 'phone': '+91 98765 43210', 'role': 'Store Manager', 'sal': 35000, 'user': owner_user},
             {'code': 'EMP-002', 'name': 'Rahul Verma', 'phone': '+91 98765 43211', 'role': 'Senior Accountant', 'sal': 25000, 'user': acc_user},
             {'code': 'EMP-003', 'name': 'Amit Kumar', 'phone': '+91 98765 43212', 'role': 'Lead Sales Executive', 'sal': 18000, 'user': staff_user},
             {'code': 'EMP-004', 'name': 'Pooja Kumari', 'phone': '+91 98765 43213', 'role': 'Customer Billing Specialist', 'sal': 16000, 'user': None},
