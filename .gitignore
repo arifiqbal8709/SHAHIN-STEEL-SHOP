@@ -45,3 +45,4 @@ Thumbs.db
 # Vite cache
 .vite/
 frontend/node_modules/.vite/
+
