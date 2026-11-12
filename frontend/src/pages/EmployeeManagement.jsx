@@ -499,6 +499,26 @@ const EmployeeManagement = () => {
     }
   };
 
+  // ─── 6B. PERMANENT DELETE EMPLOYEE (KEEPS PAST INVOICES/SALES INTACT) ───
+  const handleDeleteEmployeePermanently = async (emp) => {
+    if (isPrimaryOwnerEmployee(emp)) return;
+    const confirmMsg = `Are you sure you want to PERMANENTLY delete "${emp.name}" (${emp.employee_code})?\n\nThis will permanently remove their employee profile, login ID (${emp.username || 'none'}), attendance, and salary records.\nPast sales invoices and payment records will stay safe.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const res = await employeesAPI.delete(emp.id, true);
+      if (res && res.success) {
+        await loadEmployees();
+        showToast(res.message || `Employee "${emp.name}" permanently deleted.`);
+        window.dispatchEvent(new CustomEvent('shahin-cloud-sync'));
+      } else {
+        alert(res?.message || 'Failed to delete employee permanently.');
+      }
+    } catch (err) {
+      alert('Error deleting employee: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
   // ─── 7. SALARY PAYMENT SUBMIT ───
   const handleRecordSalarySubmit = async (e) => {
     e.preventDefault();
@@ -1006,6 +1026,15 @@ const EmployeeManagement = () => {
                                     <span className="hidden sm:inline">Rejoin</span>
                                   </button>
                                 )}
+
+                                {/* Delete Permanently */}
+                                <button
+                                  onClick={() => handleDeleteEmployeePermanently(emp)}
+                                  className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-600 hover:text-white border border-rose-200 transition-all"
+                                  title="Delete Employee Permanently"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
                               </>
                             ) : (
                               <span

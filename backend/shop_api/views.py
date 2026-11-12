@@ -1571,10 +1571,38 @@ def staff_detail_update(request, pk):
         })
 
     elif request.method == 'DELETE':
-        if is_owner_user(emp.user):
-            return Response({'success': False, 'message': 'Primary Store Owner (admin) account cannot be deactivated.'}, status=status.HTTP_400_BAD_REQUEST)
-        # NEVER hard delete employee or user: past sales, invoices and payment records must stay 100% intact forever!
+        if is_owner_user(emp.user) or emp.user == req_user:
+            return Response(
+                {'success': False, 'message': 'Primary Store Owner account cannot be deactivated or deleted.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        hard_delete = str(request.query_params.get('hard_delete', '')).lower() in ('1', 'true', 'yes')
         emp_name = emp.name
+        emp_id = emp.id
+        emp_code = emp.employee_code
+
+        if hard_delete:
+            linked_user = emp.user
+            username = linked_user.username if linked_user else None
+            with transaction.atomic():
+                emp.delete()
+                if linked_user:
+                    linked_user.delete()
+
+            AuditLog.objects.create(
+                user=req_user,
+                action='STAFF_DELETED_PERMANENTLY',
+                entity='employees',
+                entity_id=str(emp_id),
+                details={'name': emp_name, 'code': emp_code, 'username': username}
+            )
+            return Response({
+                'success': True,
+                'message': f"Employee '{emp_name}' permanently deleted. Past sales, invoices, and payment records remain intact."
+            })
+
+        # Soft deactivate ("Left Shop"): login disabled, past sales & records intact
         emp.is_active = False
         if emp.user:
             emp.user.is_active = False
