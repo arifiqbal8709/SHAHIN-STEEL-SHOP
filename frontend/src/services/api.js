@@ -11,21 +11,35 @@ const getBaseURL = () => {
   return 'http://127.0.0.1:8000/api';
 };
 
+const isCloudConfigured = Boolean(import.meta.env.VITE_API_URL);
+
+// Clear any stale local demo/cache store on cloud deployments so old data is never shown after refresh
+if (isCloudConfigured && typeof window !== 'undefined') {
+  try {
+    localStorage.removeItem('shahin_live_store');
+  } catch (e) {
+    // ignore storage errors
+  }
+}
+
 export const API_BASE_URL = getBaseURL();
 
 const API = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 5000, // 5s timeout for stable local and mobile connections
+  timeout: 25000, // 25s timeout so Vercel/Neon cold starts never trigger stale fallback data
   headers: {
     'Content-Type': 'application/json',
   }
 });
 
-// Interceptor: inject Token if available
+// Interceptor: inject Token and defeat browser/proxy caching on GET requests
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem('shahin_auth_token');
   if (token) {
     config.headers.Authorization = `Token ${token}`;
+  }
+  if ((config.method || 'get').toLowerCase() === 'get') {
+    config.params = { ...(config.params || {}), _t: Date.now() };
   }
   return config;
 });
@@ -85,74 +99,53 @@ export const persistStore = () => {
   }
 };
 
-// Ultra-fast Circuit Breaker: If backend is offline, serve local data in 0ms without waiting!
+// Local fallback circuit breaker (used only when running locally without a cloud backend)
 let isBackendAvailable = true;
 let lastFailureTime = 0;
 
+function syncMockStoreFromResponse(res) {
+  if (isCloudConfigured || !res?.data || !Array.isArray(res.data.data)) return;
+  const url = res.config?.url || '';
+  if (url.includes('/products/')) {
+    mockStore.products = res.data.data;
+    persistStore();
+  } else if (url.includes('/customers/')) {
+    mockStore.customers = res.data.data;
+    persistStore();
+  } else if (url.includes('/sales/')) {
+    mockStore.sales = res.data.data;
+    persistStore();
+  }
+}
+
 async function safeCall(apiPromise, fallbackFn) {
   const now = Date.now();
-  // If backend was unreachable recently, immediately return local store without freeze
-  if (!isBackendAvailable && (now - lastFailureTime < 4000)) {
-    if (fallbackFn) {
-      return fallbackFn();
-    }
+  if (!isCloudConfigured && !isBackendAvailable && (now - lastFailureTime < 4000) && fallbackFn) {
+    return fallbackFn();
   }
 
   try {
     const res = await apiPromise;
     isBackendAvailable = true;
-
-    // Keep local persistent store cleanly synced without EVER wiping manual entries!
-    if (res.data && Array.isArray(res.data.data)) {
-      const url = res.config?.url || '';
-      if (url.includes('/products/')) {
-        const backendItems = res.data.data;
-        const bIds = new Set(backendItems.map(p => p.id));
-        const bCodes = new Set(backendItems.map(p => (p.product_code || '').toLowerCase()).filter(Boolean));
-        // Keep any manually entered products that aren't in backend yet
-        const localOnly = (mockStore.products || []).filter(p =>
-          p && p.product_name &&
-          !bIds.has(p.id) &&
-          (!p.product_code || !bCodes.has(p.product_code.toLowerCase()))
-        );
-        mockStore.products = [...backendItems, ...localOnly];
-        persistStore();
-      } else if (url.includes('/customers/')) {
-        const backendItems = res.data.data;
-        const bPhones = new Set(backendItems.map(c => (c.phone || '').trim()).filter(Boolean));
-        const localOnly = (mockStore.customers || []).filter(c =>
-          c && c.name && c.phone && !bPhones.has(c.phone.trim())
-        );
-        mockStore.customers = [...backendItems, ...localOnly];
-        persistStore();
-      } else if (url.includes('/sales/')) {
-        const backendItems = res.data.data;
-        const bInvs = new Set(backendItems.map(s => s.invoice_number).filter(Boolean));
-        const localOnly = (mockStore.sales || []).filter(s =>
-          s && s.invoice_number && !bInvs.has(s.invoice_number)
-        );
-        mockStore.sales = [...backendItems, ...localOnly];
-        persistStore();
-      }
-    }
-
+    syncMockStoreFromResponse(res);
     return res.data;
   } catch (err) {
+    // Never mask server responses (4xx/5xx) or cloud responses with stale localStorage cache
+    if (err?.response || isCloudConfigured || !fallbackFn) {
+      throw err;
+    }
     isBackendAvailable = false;
     lastFailureTime = Date.now();
-    if (fallbackFn) {
-      return fallbackFn();
-    }
-    throw err;
+    return fallbackFn();
   }
 }
 
-// Safe Mutation for Create / Update / Delete operations: saves to localStorage
+// Safe Mutation for Create / Update / Delete operations
 async function safeMutation(apiPromise, fallbackFn) {
   try {
     const res = await apiPromise;
     isBackendAvailable = true;
-    if (res.data && res.data.data) {
+    if (!isCloudConfigured && res.data && res.data.data) {
       const item = res.data.data;
       if (item && item.product_name) {
         const exists = mockStore.products.some(p => p.id === item.id || (item.product_code && p.product_code === item.product_code));
@@ -161,19 +154,19 @@ async function safeMutation(apiPromise, fallbackFn) {
         } else {
           mockStore.products = mockStore.products.map(p => (p.id === item.id ? item : p));
         }
+        persistStore();
       }
-      persistStore();
     }
     return res.data;
   } catch (err) {
+    if (err?.response || isCloudConfigured || !fallbackFn) {
+      throw err;
+    }
     isBackendAvailable = false;
     lastFailureTime = Date.now();
-    if (fallbackFn) {
-      const result = fallbackFn();
-      persistStore();
-      return result;
-    }
-    throw err;
+    const result = fallbackFn();
+    persistStore();
+    return result;
   }
 }
 
