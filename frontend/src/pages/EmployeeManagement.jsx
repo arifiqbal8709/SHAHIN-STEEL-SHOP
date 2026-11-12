@@ -38,6 +38,11 @@ import {
 import { employeesAPI, salariesAPI, attendanceAPI, salesAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
+const isPrimaryOwnerEmployee = (emp) => {
+  const uname = (emp?.username || '').toLowerCase();
+  return uname === 'shahin_industry' || uname === 'admin';
+};
+
 const EmployeeManagement = () => {
   const navigate = useNavigate();
   const { isOwner } = useAuth();
@@ -866,6 +871,11 @@ const EmployeeManagement = () => {
                         <td className="py-3 px-4">
                           <div className="font-bold text-[#211F1C] flex items-center gap-2">
                             <span>{emp.name}</span>
+                            {isPrimaryOwnerEmployee(emp) && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-[#C49A6C]/20 text-[#8B5E2E] border border-[#C49A6C]/40">
+                                Primary Owner
+                              </span>
+                            )}
                             {emp.is_selling_today && (
                               <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-emerald-100 text-emerald-800">
                                 Selling Today
@@ -936,62 +946,75 @@ const EmployeeManagement = () => {
                               <Edit3 size={14} />
                             </button>
 
-                            {/* Permissions */}
-                            <button
-                              onClick={() => {
-                                setSelectedEmployee(emp);
-                                setPermissionsForm({
-                                  can_manage_sales: emp.can_manage_sales !== false,
-                                  can_edit_sales: emp.can_edit_sales || false,
-                                  can_give_discount: emp.can_give_discount !== false,
-                                  can_print_invoices: emp.can_print_invoices !== false,
-                                  can_manage_customers: emp.can_manage_customers !== false,
-                                  can_view_inventory: emp.can_view_inventory !== false,
-                                  can_adjust_stock: emp.can_adjust_stock || false,
-                                  can_view_emi: emp.can_view_emi !== false,
-                                  can_collect_emi: emp.can_collect_emi !== false,
-                                  can_manage_attendance: emp.can_manage_attendance !== false
-                                });
-                                setIsPermissionsModalOpen(true);
-                              }}
-                              className="p-1.5 rounded-lg text-[#C49A6C] hover:bg-[#C49A6C]/10 border border-[#C49A6C]/30 transition-all"
-                              title="Manage Permissions"
-                            >
-                              <ShieldCheck size={14} />
-                            </button>
+                            {/* Permissions, Reset Password, and Deactivate are locked for Primary Owner */}
+                            {!isPrimaryOwnerEmployee(emp) ? (
+                              <>
+                                {/* Permissions */}
+                                <button
+                                  onClick={() => {
+                                    setSelectedEmployee(emp);
+                                    setPermissionsForm({
+                                      can_manage_sales: emp.can_manage_sales !== false,
+                                      can_edit_sales: emp.can_edit_sales || false,
+                                      can_give_discount: emp.can_give_discount !== false,
+                                      can_print_invoices: emp.can_print_invoices !== false,
+                                      can_manage_customers: emp.can_manage_customers !== false,
+                                      can_view_inventory: emp.can_view_inventory !== false,
+                                      can_adjust_stock: emp.can_adjust_stock || false,
+                                      can_view_emi: emp.can_view_emi !== false,
+                                      can_collect_emi: emp.can_collect_emi !== false,
+                                      can_manage_attendance: emp.can_manage_attendance !== false
+                                    });
+                                    setIsPermissionsModalOpen(true);
+                                  }}
+                                  className="p-1.5 rounded-lg text-[#C49A6C] hover:bg-[#C49A6C]/10 border border-[#C49A6C]/30 transition-all"
+                                  title="Manage Permissions"
+                                >
+                                  <ShieldCheck size={14} />
+                                </button>
 
-                            {/* Reset Password */}
-                            <button
-                              onClick={() => {
-                                setSelectedEmployee(emp);
-                                setResetPasswordForm({ new_password: '' });
-                                setIsResetPasswordModalOpen(true);
-                              }}
-                              className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 border border-amber-200 transition-all"
-                              title="Reset Password"
-                            >
-                              <KeyRound size={14} />
-                            </button>
+                                {/* Reset Password */}
+                                <button
+                                  onClick={() => {
+                                    setSelectedEmployee(emp);
+                                    setResetPasswordForm({ new_password: '' });
+                                    setIsResetPasswordModalOpen(true);
+                                  }}
+                                  className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 border border-amber-200 transition-all"
+                                  title="Reset Password"
+                                >
+                                  <KeyRound size={14} />
+                                </button>
 
-                            {/* Left Shop / Reactivate (100% Data Preservation) */}
-                            {emp.is_active !== false ? (
-                              <button
-                                onClick={() => handleMarkLeftShop(emp)}
-                                className="px-2 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 border border-rose-200 transition-all flex items-center gap-1 text-[10px] font-bold"
-                                title="Staff chhod diya? (Login band hoga, purana data Admin me 100% safe rahega)"
-                              >
-                                <UserX size={14} />
-                                <span className="hidden sm:inline">Chhod Diya</span>
-                              </button>
+                                {/* Left Shop / Reactivate (100% Data Preservation) */}
+                                {emp.is_active !== false ? (
+                                  <button
+                                    onClick={() => handleMarkLeftShop(emp)}
+                                    className="px-2 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 border border-rose-200 transition-all flex items-center gap-1 text-[10px] font-bold"
+                                    title="Staff chhod diya? (Login band hoga, purana data Admin me 100% safe rahega)"
+                                  >
+                                    <UserX size={14} />
+                                    <span className="hidden sm:inline">Chhod Diya</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleMarkLeftShop(emp)}
+                                    className="px-2 py-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 border border-emerald-200 transition-all flex items-center gap-1 text-[10px] font-bold"
+                                    title="Wapas Rejoin karein (Chalu karein)"
+                                  >
+                                    <UserCheck size={14} />
+                                    <span className="hidden sm:inline">Rejoin</span>
+                                  </button>
+                                )}
+                              </>
                             ) : (
-                              <button
-                                onClick={() => handleMarkLeftShop(emp)}
-                                className="px-2 py-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 border border-emerald-200 transition-all flex items-center gap-1 text-[10px] font-bold"
-                                title="Wapas Rejoin karein (Chalu karein)"
+                              <span
+                                className="px-2 py-1 rounded-lg bg-[#F7F5F0] text-[#8B5E2E] border border-[#C49A6C]/40 text-[10px] font-bold inline-flex items-center gap-1"
+                                title="Primary Owner login credentials are protected from Staff Management resets"
                               >
-                                <UserCheck size={14} />
-                                <span className="hidden sm:inline">Rejoin</span>
-                              </button>
+                                <ShieldCheck size={12} />
+                                Protected
+                              </span>
                             )}
                           </div>
                         </td>
@@ -1995,6 +2018,7 @@ const EmployeeManagement = () => {
                   </label>
                   <input
                     type="text"
+                    autoComplete="off"
                     required
                     placeholder="e.g. rahul_sales"
                     value={addEmployeeForm.username}
@@ -2009,6 +2033,7 @@ const EmployeeManagement = () => {
                   </label>
                   <input
                     type="password"
+                    autoComplete="new-password"
                     required
                     placeholder="Enter login password"
                     value={addEmployeeForm.password}
@@ -2109,7 +2134,7 @@ const EmployeeManagement = () => {
                 <X size={18} />
               </button>
             </div>
-            <form onSubmit={handleEditEmployeeSubmit} className="p-5 space-y-3">
+            <form onSubmit={handleEditEmployeeSubmit} autoComplete="off" className="p-5 space-y-3">
               <div>
                 <label className="block text-[10px] font-bold text-[#71717A] uppercase mb-1">Full Name (Staff Name)</label>
                 <input
@@ -2128,24 +2153,33 @@ const EmployeeManagement = () => {
                 <label className="block text-[10px] font-bold text-[#71717A] uppercase mb-1">Login ID (Username)</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  disabled={isPrimaryOwnerEmployee(selectedEmployee)}
                   value={editEmployeeForm.username}
                   onChange={(e) => setEditEmployeeForm({ ...editEmployeeForm, username: e.target.value.toLowerCase().replace(/\s+/g, '') })}
-                  className="w-full px-3 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-mono font-bold"
+                  className="w-full px-3 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-mono font-bold disabled:opacity-60"
                   placeholder="e.g. staff01 or ramesh"
                 />
               </div>
-              <div>
-                <label className="block text-[10px] font-bold text-[#71717A] uppercase mb-1">
-                  Change Login Password <span className="text-[#A39E98] font-normal normal-case">(Leave blank to keep current)</span>
-                </label>
-                <input
-                  type="text"
-                  value={editEmployeeForm.password || ''}
-                  onChange={(e) => setEditEmployeeForm({ ...editEmployeeForm, password: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-mono"
-                  placeholder="Enter new password (optional)"
-                />
-              </div>
+              {!isPrimaryOwnerEmployee(selectedEmployee) ? (
+                <div>
+                  <label className="block text-[10px] font-bold text-[#71717A] uppercase mb-1">
+                    Change Login Password <span className="text-[#A39E98] font-normal normal-case">(Leave blank to keep current)</span>
+                  </label>
+                  <input
+                    type="text"
+                    autoComplete="new-password"
+                    value={editEmployeeForm.password || ''}
+                    onChange={(e) => setEditEmployeeForm({ ...editEmployeeForm, password: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-mono"
+                    placeholder="Enter new password (optional)"
+                  />
+                </div>
+              ) : (
+                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 font-medium">
+                  Primary Store Owner username and password are protected and cannot be changed here.
+                </div>
+              )}
               <div>
                 <label className="block text-[10px] font-bold text-[#71717A] uppercase mb-1">Mobile Number</label>
                 <input
@@ -2276,13 +2310,14 @@ const EmployeeManagement = () => {
                 <X size={18} />
               </button>
             </div>
-            <form onSubmit={handleResetPasswordSubmit} className="p-5 space-y-3">
+            <form onSubmit={handleResetPasswordSubmit} autoComplete="off" className="p-5 space-y-3">
               <div>
                 <label className="block text-[10px] font-bold text-[#71717A] uppercase mb-1">
                   New Password *
                 </label>
                 <input
                   type="password"
+                  autoComplete="new-password"
                   required
                   placeholder="Enter new password for employee"
                   value={resetPasswordForm.new_password}

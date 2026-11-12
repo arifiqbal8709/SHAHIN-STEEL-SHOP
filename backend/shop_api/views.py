@@ -56,6 +56,17 @@ def is_owner_user(user):
     return bool(profile and profile.role and profile.role.name == 'OWNER')
 
 
+def require_owner_request(request):
+    """Ensure caller is an authenticated Store Owner; return (user, error_response)."""
+    req_user, _, _ = get_request_user_and_employee(request)
+    if not is_owner_user(req_user):
+        return None, Response(
+            {'success': False, 'message': 'Only the Store Owner can manage staff accounts or credentials.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    return req_user, None
+
+
 # -----------------------------------------------------------------------------
 # 1. AUTHENTICATION & MULTI-DEVICE LOGIN
 # -----------------------------------------------------------------------------
@@ -1402,6 +1413,9 @@ def employee_list_create(request):
         return Response({'success': True, 'count': len(data), 'data': data})
 
     elif request.method == 'POST':
+        req_user, err_res = require_owner_request(request)
+        if err_res:
+            return err_res
         data = request.data
         name = data.get('name', '').strip()
         phone = data.get('phone', '').strip()
@@ -1495,6 +1509,9 @@ def employee_list_create(request):
 @api_view(['PUT', 'DELETE'])
 @permission_classes([AllowAny])
 def staff_detail_update(request, pk):
+    req_user, err_res = require_owner_request(request)
+    if err_res:
+        return err_res
     try:
         emp = Employee.objects.select_related('user').get(pk=pk)
     except Employee.DoesNotExist:
@@ -1502,6 +1519,11 @@ def staff_detail_update(request, pk):
 
     if request.method == 'PUT':
         data = request.data
+        if is_owner_user(emp.user) and data.get('password', '').strip():
+            return Response(
+                {'success': False, 'message': 'Primary Store Owner password cannot be changed from Staff Management.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if 'name' in data: emp.name = data['name'].strip()
         if 'phone' in data: emp.phone = data['phone'].strip()
         if 'email' in data: emp.email = data['email'].strip()
@@ -1532,13 +1554,13 @@ def staff_detail_update(request, pk):
             else:
                 if User.objects.filter(username__iexact=new_u).exclude(pk=emp.user.pk).exists():
                     return Response({'success': False, 'message': f"Login ID '{new_u}' is already taken. Please choose another Login ID."}, status=status.HTTP_400_BAD_REQUEST)
-                # Keep primary Owner username intact so Owner login always works
+                # Keep primary Owner username and password intact so Owner login always works
                 if not is_owner_user(emp.user):
                     emp.user.username = new_u
-                if 'password' in data and data['password'].strip():
-                    emp.user.set_password(data['password'].strip())
+                    if 'password' in data and data['password'].strip():
+                        emp.user.set_password(data['password'].strip())
                 emp.user.save()
-        elif 'password' in data and data['password'].strip() and emp.user:
+        elif 'password' in data and data['password'].strip() and emp.user and not is_owner_user(emp.user):
             emp.user.set_password(data['password'].strip())
             emp.user.save()
         emp.save()
@@ -1582,7 +1604,9 @@ def staff_permissions_update(request, pk):
     """
     Owner Permission Control: Enable/disable individual permissions for staff.
     """
-    req_user, _, _ = get_request_user_and_employee(request)
+    req_user, err_res = require_owner_request(request)
+    if err_res:
+        return err_res
     try:
         emp = Employee.objects.get(pk=pk)
     except Employee.DoesNotExist:
@@ -1620,11 +1644,19 @@ def staff_reset_password(request, pk):
     """
     Owner resets staff temporary password.
     """
-    req_user, _, _ = get_request_user_and_employee(request)
+    req_user, err_res = require_owner_request(request)
+    if err_res:
+        return err_res
     try:
         emp = Employee.objects.select_related('user').get(pk=pk)
     except Employee.DoesNotExist:
         return Response({'success': False, 'message': 'Staff record not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if is_owner_user(emp.user):
+        return Response(
+            {'success': False, 'message': 'Primary Store Owner password cannot be reset from Staff Management.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     new_password = request.data.get('new_password', '').strip()
     if not new_password:
@@ -1660,10 +1692,19 @@ def staff_toggle_status(request, pk):
     """
     Owner toggles active/inactive account status.
     """
+    _, err_res = require_owner_request(request)
+    if err_res:
+        return err_res
     try:
         emp = Employee.objects.select_related('user').get(pk=pk)
     except Employee.DoesNotExist:
         return Response({'success': False, 'message': 'Staff record not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if is_owner_user(emp.user):
+        return Response(
+            {'success': False, 'message': 'Primary Store Owner account cannot be deactivated.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     emp.is_active = not emp.is_active
     if emp.user:
