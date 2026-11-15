@@ -411,6 +411,13 @@ const StockManagement = () => {
                           {canModifyStock ? (
                             <div className="flex items-center justify-center gap-1.5">
                               <button
+                                onClick={() => navigate(`/purchases?action=new&product_id=${p.id}`)}
+                                className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                                title={`Restock / Buy more ${p.product_name} and add to stock`}
+                              >
+                                <Truck size={13} className="text-emerald-700" /> Restock
+                              </button>
+                              <button
                                 onClick={() => handleOpenEditModal(p)}
                                 className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold transition-all flex items-center gap-1"
                                 title="Edit product details"

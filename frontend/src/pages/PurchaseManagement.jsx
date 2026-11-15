@@ -105,13 +105,30 @@ const PurchaseManagement = () => {
     return () => window.removeEventListener('shahin-cloud-sync', loadData);
   }, []);
 
-  // Check URL query parameters for ?action=new
+  // Check URL query parameters for ?action=new & ?product_id=...
   useEffect(() => {
     const params = new URLSearchParams(location.search);
+    const prodId = params.get('product_id');
     if (params.get('action') === 'new') {
       setIsAddModalOpen(true);
+      if (prodId && products.length > 0) {
+        const prod = products.find(p => String(p.id) === String(prodId));
+        if (prod) {
+          setPurchaseItems([
+            {
+              product_id: prod.id,
+              product_name: prod.product_name,
+              quantity: 1,
+              unit_cost: Number(prod.purchase_price || 0),
+              selling_price: Number(prod.selling_price || 0),
+              unit: prod.unit || 'PCS',
+              is_new_product: false
+            }
+          ]);
+        }
+      }
     }
-  }, [location.search]);
+  }, [location.search, products]);
 
   // Handle Supplier Selection
   const handleSelectSupplier = (supId) => {
@@ -761,118 +778,137 @@ const PurchaseManagement = () => {
                 </div>
 
                 <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
-                  {purchaseItems.map((itm, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E5E2DE] grid grid-cols-12 gap-2.5 items-center"
-                    >
-                      {/* Product Selector / Name */}
-                      <div className="col-span-12 sm:col-span-4">
-                        <label className="block text-[9px] font-bold text-stone-400 uppercase mb-0.5">
-                          Product Item *
-                        </label>
-                        {products.length > 0 ? (
-                          <div className="space-y-1">
-                            <select
-                              value={itm.product_id}
-                              onChange={(e) => handleItemChange(idx, 'product_id', e.target.value)}
-                              className="w-full px-2 py-1.5 bg-white rounded-lg border border-[#E5E2DE] text-xs font-bold text-[#211F1C] truncate"
-                            >
-                              <option value="">-- Select Showroom Product --</option>
-                              {products.map(p => (
-                                <option key={p.id} value={p.id}>
-                                  {p.product_name} (Current Stock: {p.available_quantity} {p.unit || 'PCS'})
-                                </option>
-                              ))}
-                            </select>
-                            {!itm.product_id && (
-                              <input
-                                type="text"
-                                placeholder="Or type new product name directly..."
-                                value={itm.product_name}
-                                onChange={(e) => handleItemChange(idx, 'product_name', e.target.value)}
-                                className="w-full px-2 py-1 bg-white rounded-lg border border-dashed border-[#C49A6C] text-[11px] font-semibold"
-                              />
-                            )}
-                          </div>
-                        ) : (
+                  {purchaseItems.map((itm, idx) => {
+                    const selectedProd = products.find(p => String(p.id) === String(itm.product_id));
+                    return (
+                      <div
+                        key={idx}
+                        className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E5E2DE] grid grid-cols-12 gap-2.5 items-center"
+                      >
+                        {/* Product Selector / Name */}
+                        <div className="col-span-12 sm:col-span-4">
+                          <label className="block text-[9px] font-bold text-stone-400 uppercase mb-0.5">
+                            Product Item (Select from Inventory) *
+                          </label>
+                          {products.length > 0 ? (
+                            <div className="space-y-1">
+                              <select
+                                value={itm.product_id}
+                                onChange={(e) => handleItemChange(idx, 'product_id', e.target.value)}
+                                className="w-full px-2 py-1.5 bg-white rounded-lg border border-[#E5E2DE] text-xs font-bold text-[#211F1C] truncate"
+                              >
+                                <option value="">-- Select Showroom Product ({products.length}) --</option>
+                                {products.map(p => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.product_name} (Current Stock: {p.available_quantity} {p.unit || 'PCS'})
+                                  </option>
+                                ))}
+                              </select>
+                              {!itm.product_id && (
+                                <input
+                                  type="text"
+                                  placeholder="Or type new product name to add new item..."
+                                  value={itm.product_name}
+                                  onChange={(e) => handleItemChange(idx, 'product_name', e.target.value)}
+                                  className="w-full px-2 py-1 bg-white rounded-lg border border-dashed border-[#C49A6C] text-[11px] font-semibold"
+                                />
+                              )}
+                            </div>
+                          ) : (
+                            <input
+                              type="text"
+                              required
+                              placeholder="Product name (e.g. 4-Door Almirah)"
+                              value={itm.product_name}
+                              onChange={(e) => handleItemChange(idx, 'product_name', e.target.value)}
+                              className="w-full px-2 py-1.5 bg-white rounded-lg border border-[#E5E2DE] text-xs font-semibold"
+                            />
+                          )}
+                        </div>
+
+                        {/* Quantity */}
+                        <div className="col-span-4 sm:col-span-2">
+                          <label className="block text-[9px] font-bold text-stone-400 uppercase mb-0.5">
+                            Quantity to Add
+                          </label>
                           <input
-                            type="text"
+                            type="number"
+                            min="1"
                             required
-                            placeholder="Product name (e.g. 4-Door Almirah)"
-                            value={itm.product_name}
-                            onChange={(e) => handleItemChange(idx, 'product_name', e.target.value)}
-                            className="w-full px-2 py-1.5 bg-white rounded-lg border border-[#E5E2DE] text-xs font-semibold"
+                            value={itm.quantity}
+                            onChange={(e) => handleItemChange(idx, 'quantity', Math.max(1, Number(e.target.value || 1)))}
+                            className="w-full px-2 py-1.5 bg-white rounded-lg border border-[#E5E2DE] text-xs text-center font-black"
                           />
+                        </div>
+
+                        {/* Buying Price (Unit Cost) */}
+                        <div className="col-span-4 sm:col-span-2">
+                          <label className="block text-[9px] font-bold text-stone-400 uppercase mb-0.5">
+                            Buying Cost (₹)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            required
+                            value={itm.unit_cost}
+                            onChange={(e) => handleItemChange(idx, 'unit_cost', Math.max(0, Number(e.target.value || 0)))}
+                            className="w-full px-2 py-1.5 bg-white rounded-lg border border-[#E5E2DE] text-xs font-bold"
+                          />
+                        </div>
+
+                        {/* Selling Price (Optional Showroom Rate) */}
+                        <div className="col-span-4 sm:col-span-2">
+                          <label className="block text-[9px] font-bold text-stone-400 uppercase mb-0.5">
+                            Selling Rate (₹)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Optional"
+                            value={itm.selling_price || ''}
+                            onChange={(e) => handleItemChange(idx, 'selling_price', Number(e.target.value || 0))}
+                            className="w-full px-2 py-1.5 bg-white rounded-lg border border-[#E5E2DE] text-xs font-semibold text-stone-700"
+                          />
+                        </div>
+
+                        {/* Line Total */}
+                        <div className="col-span-10 sm:col-span-1 text-right">
+                          <span className="block text-[9px] font-bold text-stone-400 uppercase">Total</span>
+                          <span className="text-xs font-black text-[#211F1C]">
+                            ₹{(Number(itm.quantity || 0) * Number(itm.unit_cost || 0)).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+
+                        {/* Remove Button */}
+                        <div className="col-span-2 sm:col-span-1 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItemRow(idx)}
+                            className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                            title="Remove row"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+
+                        {/* Live Existing Stock Indicator Badge */}
+                        {selectedProd && (
+                          <div className="col-span-12 mt-1.5 flex flex-wrap items-center justify-between text-[11px] bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-300 text-emerald-950">
+                            <div className="flex items-center gap-1.5 font-bold">
+                              <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                              <span>Direct Inward to: <strong>{selectedProd.product_name}</strong></span>
+                            </div>
+                            <div className="flex items-center gap-3 font-semibold text-[11px]">
+                              <span>Current Stock: <strong className="font-mono">{selectedProd.available_quantity} {selectedProd.unit || 'PCS'}</strong></span>
+                              <span className="text-emerald-800 font-extrabold bg-emerald-200/90 px-2.5 py-0.5 rounded-full border border-emerald-400">
+                                + {Number(itm.quantity || 0)} Inward = New Stock: {selectedProd.available_quantity + Number(itm.quantity || 0)} {selectedProd.unit || 'PCS'}
+                              </span>
+                            </div>
+                          </div>
                         )}
                       </div>
-
-                      {/* Quantity */}
-                      <div className="col-span-4 sm:col-span-2">
-                        <label className="block text-[9px] font-bold text-stone-400 uppercase mb-0.5">
-                          Quantity
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          required
-                          value={itm.quantity}
-                          onChange={(e) => handleItemChange(idx, 'quantity', Math.max(1, Number(e.target.value || 1)))}
-                          className="w-full px-2 py-1.5 bg-white rounded-lg border border-[#E5E2DE] text-xs text-center font-black"
-                        />
-                      </div>
-
-                      {/* Buying Price (Unit Cost) */}
-                      <div className="col-span-4 sm:col-span-2">
-                        <label className="block text-[9px] font-bold text-stone-400 uppercase mb-0.5">
-                          Buying Cost (₹)
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          required
-                          value={itm.unit_cost}
-                          onChange={(e) => handleItemChange(idx, 'unit_cost', Math.max(0, Number(e.target.value || 0)))}
-                          className="w-full px-2 py-1.5 bg-white rounded-lg border border-[#E5E2DE] text-xs font-bold"
-                        />
-                      </div>
-
-                      {/* Selling Price (Optional Showroom Rate) */}
-                      <div className="col-span-4 sm:col-span-2">
-                        <label className="block text-[9px] font-bold text-stone-400 uppercase mb-0.5">
-                          Selling Rate (₹)
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="Optional"
-                          value={itm.selling_price || ''}
-                          onChange={(e) => handleItemChange(idx, 'selling_price', Number(e.target.value || 0))}
-                          className="w-full px-2 py-1.5 bg-white rounded-lg border border-[#E5E2DE] text-xs font-semibold text-stone-700"
-                        />
-                      </div>
-
-                      {/* Line Total */}
-                      <div className="col-span-10 sm:col-span-1 text-right">
-                        <span className="block text-[9px] font-bold text-stone-400 uppercase">Total</span>
-                        <span className="text-xs font-black text-[#211F1C]">
-                          ₹{(Number(itm.quantity || 0) * Number(itm.unit_cost || 0)).toLocaleString('en-IN')}
-                        </span>
-                      </div>
-
-                      {/* Remove Button */}
-                      <div className="col-span-2 sm:col-span-1 flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItemRow(idx)}
-                          className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                          title="Remove row"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
