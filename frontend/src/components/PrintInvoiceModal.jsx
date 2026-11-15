@@ -1,21 +1,127 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Printer, Download, ArrowLeft, X } from 'lucide-react';
 import EstimateBillTemplate from './EstimateBillTemplate';
 import TaxInvoiceTemplate from './TaxInvoiceTemplate';
 
 const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
-  const printRef = useRef();
+  const modalScrollRef = useRef(null);
+
+  // When modal opens, scroll both window and modal container to top, and lock body scroll
+  useEffect(() => {
+    if (isOpen) {
+      window.scrollTo(0, 0);
+      if (modalScrollRef.current) {
+        modalScrollRef.current.scrollTop = 0;
+      }
+      document.body.classList.add('has-print-modal');
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+
+      return () => {
+        document.body.classList.remove('has-print-modal');
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
 
   if (!isOpen || !sale) return null;
 
   const handlePrint = () => {
     const originalTitle = document.title;
     const prefix = sale.invoice_type === 'ESTIMATE_BILL' ? 'Estimate_Bill' : 'Tax_Invoice';
-    document.title = `${prefix}_${sale.invoice_number || 'Bill'}_SHAHIN_STEEL_FURNITURE`;
-    window.print();
-    setTimeout(() => {
-      document.title = originalTitle;
-    }, 1200);
+    const invoiceTitle = `${prefix}_${sale.invoice_number || 'Bill'}_SHAHIN_STEEL_FURNITURE`;
+    document.title = invoiceTitle;
+
+    const printableElement = document.getElementById('printable-bill-modal-content');
+    if (!printableElement) {
+      window.print();
+      return;
+    }
+
+    try {
+      // Create hidden iframe for 100% clean, unclipped print without background scrolling or blank page issues
+      const iframe = document.createElement('iframe');
+      iframe.setAttribute('style', 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:0;');
+      document.body.appendChild(iframe);
+
+      const doc = iframe.contentWindow.document;
+      doc.open();
+
+      // Copy all parent document styles and links so fonts and Tailwind render identically
+      const styleTags = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+        .map(tag => tag.outerHTML)
+        .join('\n');
+
+      doc.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>${invoiceTitle}</title>
+            <meta charset="utf-8" />
+            ${styleTags}
+            <style>
+              @page {
+                size: A4 portrait;
+                margin: 6mm 8mm;
+              }
+              * {
+                box-sizing: border-box;
+              }
+              html, body {
+                background: #ffffff !important;
+                color: #000000 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                overflow: visible !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              }
+              .print-container {
+                width: 100% !important;
+                max-width: 198mm !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+              }
+              .no-print {
+                display: none !important;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="print-container">
+              ${printableElement.innerHTML}
+            </div>
+          </body>
+        </html>
+      `);
+      doc.close();
+
+      setTimeout(() => {
+        try {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        } catch (err) {
+          console.error("Iframe print error, falling back to window.print():", err);
+          window.print();
+        } finally {
+          setTimeout(() => {
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
+            document.title = originalTitle;
+          }, 1500);
+        }
+      }, 350);
+    } catch (e) {
+      console.warn("Iframe creation failed, using window.print():", e);
+      window.print();
+      setTimeout(() => {
+        document.title = originalTitle;
+      }, 1200);
+    }
   };
 
   const handleDownloadPDF = () => {
@@ -23,10 +129,69 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-4xl w-full shadow-2xl overflow-hidden my-4">
+    <div
+      ref={modalScrollRef}
+      className="print-modal-wrapper fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-start justify-center p-2 sm:p-4 overflow-y-auto"
+    >
+      {/* ── Global Print Styles for direct Ctrl+P ── */}
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 6mm 8mm;
+          }
+          html, body {
+            background: white !important;
+            color: black !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            overflow: visible !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          .print-modal-wrapper {
+            position: static !important;
+            background: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+            display: block !important;
+            width: 100% !important;
+          }
+
+          .print-modal-card {
+            position: static !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+            margin: 0 auto !important;
+            padding: 0 !important;
+            width: 100% !important;
+            max-width: 198mm !important;
+            overflow: visible !important;
+          }
+
+          #printable-bill-modal-content {
+            margin: 0 auto !important;
+            padding: 0 !important;
+            width: 100% !important;
+            max-width: 198mm !important;
+            overflow: visible !important;
+          }
+
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      {/* Main Modal Card */}
+      <div className="print-modal-card bg-white rounded-2xl max-w-4xl w-full shadow-2xl my-2 sm:my-3 border border-stone-300">
         {/* Modal Controls Bar (Hidden during print) */}
-        <div className="no-print bg-[#211F1C] text-white px-5 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/10 sticky top-0 z-20 shadow-md">
+        <div className="no-print bg-[#211F1C] text-white px-5 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/10 sticky top-0 z-20 shadow-md rounded-t-2xl">
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
@@ -37,11 +202,14 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
               <span>Back</span>
             </button>
             <div>
-              <h3 className="font-serif font-bold text-sm text-white">
-                {sale.invoice_type === 'ESTIMATE_BILL' ? 'Estimate Bill' : 'Tax Invoice'}: {sale.invoice_number || 'New Bill'}
+              <h3 className="font-serif font-bold text-sm text-white flex items-center gap-2">
+                <span>{sale.invoice_type === 'ESTIMATE_BILL' ? 'Estimate / Retail Bill' : 'GST Tax Invoice'}:</span>
+                <span className="text-[#C49A6C] font-mono font-black">{sale.invoice_number || 'New Bill'}</span>
               </h3>
-              <p className="text-[10px] text-[#C49A6C]">
-                Shahin Steel Furniture {sale.invoice_type === 'ESTIMATE_BILL' ? 'Estimate / Proforma Bill' : 'GST Tax Invoice'}
+              <p className="text-[10px] text-[#A39E98]">
+                {sale.invoice_type === 'ESTIMATE_BILL'
+                  ? 'MS Shahin Steel Furniture • Retail / Proforma Estimate (No GST)'
+                  : 'M/S Shahin Steel Furniture • 18% GST Tax Invoice'}
               </p>
             </div>
           </div>
@@ -69,18 +237,16 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
         </div>
 
         {/* Printable Invoice Container */}
-        <div className="p-4 sm:p-6 bg-white text-black font-sans text-[11px] leading-tight print:p-0 print:m-0">
-          <div ref={printRef}>
-            {sale.invoice_type === 'ESTIMATE_BILL' ? (
-              <EstimateBillTemplate sale={sale} />
-            ) : (
-              <TaxInvoiceTemplate sale={sale} />
-            )}
-          </div>
+        <div id="printable-bill-modal-content" className="p-3 sm:p-6 bg-white text-black font-sans text-[11px] leading-tight">
+          {sale.invoice_type === 'ESTIMATE_BILL' ? (
+            <EstimateBillTemplate sale={sale} />
+          ) : (
+            <TaxInvoiceTemplate sale={sale} />
+          )}
         </div>
 
-        {/* Bottom Actions Bar */}
-        <div className="no-print bg-[#F7F5F0] px-6 py-4 border-t border-[#E5E2DE] flex items-center justify-between">
+        {/* Bottom Actions Bar (Hidden during print) */}
+        <div className="no-print bg-[#F7F5F0] px-6 py-4 border-t border-[#E5E2DE] flex items-center justify-between rounded-b-2xl">
           <button
             onClick={onClose}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#E5E2DE] bg-white text-[#211F1C] font-bold text-xs hover:bg-stone-50 cursor-pointer"
@@ -101,7 +267,7 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#211F1C] hover:bg-[#34312d] text-[#C49A6C] font-extrabold text-xs transition-all shadow-md cursor-pointer"
             >
               <Printer size={16} />
-              <span>Print Bill</span>
+              <span>{sale.invoice_type === 'ESTIMATE_BILL' ? 'Print Estimate' : 'Print Tax Invoice'}</span>
             </button>
           </div>
         </div>

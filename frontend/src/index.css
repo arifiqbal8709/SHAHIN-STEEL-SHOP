@@ -73,26 +73,22 @@ body {
 /* Print Invoice Formatting - Strict Single-Page A4 Printing */
 @page {
   size: A4 portrait;
-  margin: 6mm 6mm 6mm 6mm;
+  margin: 6mm 8mm;
 }
 
 @media print {
   html, body {
-    width: 210mm !important;
-    height: 297mm !important;
-    max-height: 297mm !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #FFFFFF !important;
     color: #000000 !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-  }
-
-  /* Hide all background and UI elements */
-  body * {
-    visibility: hidden;
   }
 
   .no-print,
@@ -101,29 +97,47 @@ body {
     visibility: hidden !important;
   }
 
-  /* Only printable invoice and its children are visible and placed at page top */
-  .printable-invoice,
-  .printable-invoice * {
-    visibility: visible !important;
+  /* When modal is open during print, hide background app content */
+  body.has-print-modal #root > *:not(.print-modal-wrapper) {
+    display: none !important;
   }
 
-  .printable-invoice {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    width: 198mm !important;
-    max-width: 198mm !important;
-    max-height: 285mm !important;
+  .print-modal-wrapper {
+    position: static !important;
+    inset: auto !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .print-modal-card {
+    position: static !important;
+    box-shadow: none !important;
+    border: none !important;
     margin: 0 auto !important;
     padding: 0 !important;
+    width: 100% !important;
+    max-width: 198mm !important;
+    overflow: visible !important;
+  }
+
+  .printable-invoice,
+  .printable-tax-invoice,
+  #printable-bill-modal-content {
+    margin: 0 auto !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 198mm !important;
     box-sizing: border-box !important;
     background: #FFFFFF !important;
     page-break-before: avoid !important;
     page-break-after: avoid !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    break-after: avoid !important;
   }
 
   .print-only {

@@ -62,12 +62,12 @@ const TaxInvoiceTemplate = ({ sale }) => {
   const igstTotal = isInterState ? (sale.igst_amount !== undefined && Number(sale.igst_amount) > 0 ? Number(sale.igst_amount) : taxableTotal * 0.18) : 0;
   const grandTotal = sale.grand_total ? Number(sale.grand_total) : (taxableTotal + cgstTotal + sgstTotal + igstTotal);
 
-  // Minimum row count so the table matches the exact tall height of the sample invoice
-  const TOTAL_DISPLAY_ROWS = 12;
+  // Display rows count calibrated for single-page A4 print matching sample
+  const TOTAL_DISPLAY_ROWS = 8;
   const emptyRowsCount = Math.max(0, TOTAL_DISPLAY_ROWS - items.length);
 
   return (
-    <div className="tax-invoice-wrapper w-full bg-white text-black font-sans leading-tight">
+    <div className="tax-invoice-wrapper printable-invoice w-full bg-white text-black font-sans leading-tight">
       <style>{`
         @media print {
           @page {

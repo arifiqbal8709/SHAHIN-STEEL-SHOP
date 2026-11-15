@@ -53,6 +53,22 @@ const EstimateBillTemplate = ({ sale }) => {
 
   return (
     <div className="printable-invoice bg-white text-black font-sans text-[10px] leading-tight max-w-[800px] w-full mx-auto p-3 sm:p-4 border border-gray-400 print:p-0 print:border-none print:m-0 print:w-[198mm] print:max-w-[198mm]">
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 6mm 8mm;
+          }
+          body {
+            background: white !important;
+            color: black !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+      `}</style>
       {/* ── 1. Top Centered Company Header ── */}
       <div className="text-center pb-2" style={{ breakInside: 'avoid' }}>
         <h1 className="text-xl sm:text-2xl font-black text-[#16325B] tracking-wide uppercase font-sans m-0">
