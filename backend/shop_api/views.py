@@ -1243,36 +1243,96 @@ def record_emi_payment(request, installment_id):
 # -----------------------------------------------------------------------------
 # 6. PURCHASES (Factory & Supplier Inward)
 # -----------------------------------------------------------------------------
+# 6. PURCHASES & INWARD INVENTORY
+# -----------------------------------------------------------------------------
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def purchase_list_create(request):
     if request.method == 'GET':
-        purchases = Purchase.objects.select_related('supplier').prefetch_related('items__product').order_by('-purchase_date')
+        purchases = Purchase.objects.select_related('supplier').prefetch_related('items__product').order_by('-purchase_date', '-id')
         return Response({'success': True, 'count': purchases.count(), 'data': PurchaseSerializer(purchases, many=True).data})
 
     elif request.method == 'POST':
         data = request.data
         supplier_id = data.get('supplier_id')
+        supplier_name = (data.get('supplier_name') or '').strip()
         items = data.get('items', [])
 
         if not items:
-            return Response({'success': False, 'message': 'Purchase items required.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'success': False, 'message': 'At least one purchase item is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
-            supplier = Supplier.objects.get(pk=supplier_id)
-            inv_no = data.get('purchase_invoice_no', f"PUR-{uuid.uuid4().hex[:6].upper()}")
-            paid_amount = Decimal(str(data.get('paid_amount', 0)))
+            # 1. Resolve or Auto-Create Supplier / Vendor
+            supplier = None
+            if supplier_id:
+                try:
+                    supplier = Supplier.objects.get(pk=int(supplier_id))
+                except (Supplier.DoesNotExist, ValueError):
+                    pass
 
+            if not supplier:
+                if not supplier_name:
+                    supplier_name = "Shahin Steel Factory / Vendor"
+                supplier, _ = Supplier.objects.get_or_create(
+                    name=supplier_name,
+                    defaults={
+                        'supplier_code': f"SUP-{uuid.uuid4().hex[:6].upper()}",
+                        'phone': (data.get('supplier_phone') or 'N/A').strip(),
+                        'address': (data.get('supplier_address') or '').strip(),
+                        'gstin': (data.get('supplier_gstin') or '').strip()
+                    }
+                )
+
+            inv_no = (data.get('purchase_invoice_no') or '').strip()
+            if not inv_no:
+                count_p = Purchase.objects.count() + 1
+                inv_no = f"PUR-{count_p:04d}"
+
+            paid_amount = Decimal(str(data.get('paid_amount', 0)))
             total_amount = Decimal('0.00')
             purchase_items_to_create = []
 
             for itm in items:
-                prod = Product.objects.get(pk=itm['product_id'])
-                qty = int(itm['quantity'])
-                cost = Decimal(str(itm['unit_cost']))
+                prod = None
+                p_id = itm.get('product_id')
+                if p_id:
+                    try:
+                        prod = Product.objects.select_for_update().get(pk=int(p_id))
+                    except (Product.DoesNotExist, ValueError):
+                        pass
+
+                # If product doesn't exist, auto-create it in showroom catalog!
+                if not prod and itm.get('product_name'):
+                    p_name = itm['product_name'].strip()
+                    prod = Product.objects.filter(product_name__iexact=p_name).first()
+                    if not prod:
+                        cat = Category.objects.first()
+                        cost_val = Decimal(str(itm.get('unit_cost', 0)))
+                        selling_val = Decimal(str(itm.get('selling_price') or (cost_val * Decimal('1.30'))))
+                        prod = Product.objects.create(
+                            product_name=p_name,
+                            product_code=itm.get('product_code') or f"PRD-{uuid.uuid4().hex[:6].upper()}",
+                            category=cat,
+                            purchase_price=cost_val,
+                            selling_price=selling_val,
+                            available_quantity=0,
+                            unit=itm.get('unit', 'PCS')
+                        )
+
+                if not prod:
+                    continue
+
+                qty = int(itm.get('quantity', 1))
+                if qty <= 0:
+                    continue
+
+                cost = Decimal(str(itm.get('unit_cost', prod.purchase_price)))
                 tot = cost * qty
                 total_amount += tot
-                purchase_items_to_create.append((prod, qty, cost, tot))
+                purchase_items_to_create.append((prod, qty, cost, tot, itm.get('selling_price')))
+
+            if not purchase_items_to_create:
+                return Response({'success': False, 'message': 'No valid product items in purchase.'}, status=status.HTTP_400_BAD_REQUEST)
 
             bal = total_amount - paid_amount
             p_status = 'PAID' if bal <= 0 else ('PARTIAL' if paid_amount > 0 else 'UNPAID')
@@ -1289,10 +1349,12 @@ def purchase_list_create(request):
                 notes=data.get('notes', '')
             )
 
-            for prod, qty, cost, tot in purchase_items_to_create:
+            for prod, qty, cost, tot, new_selling in purchase_items_to_create:
                 prev_q = prod.available_quantity
                 prod.available_quantity += qty
-                prod.purchase_price = cost # Update last purchase price
+                prod.purchase_price = cost # Automatically update purchase cost to latest buying rate
+                if new_selling and Decimal(str(new_selling)) > 0:
+                    prod.selling_price = Decimal(str(new_selling))
                 prod.save()
 
                 PurchaseItem.objects.create(
@@ -1311,7 +1373,7 @@ def purchase_list_create(request):
                     new_quantity=prod.available_quantity,
                     reference_type='PURCHASE',
                     reference_id=purchase.purchase_invoice_no,
-                    notes=f"Stock received from {supplier.name}"
+                    notes=f"Stock inward restock from {supplier.name}"
                 )
 
             supplier.pending_balance += max(Decimal('0.00'), bal)
@@ -1319,9 +1381,75 @@ def purchase_list_create(request):
 
         return Response({
             'success': True,
-            'message': f"Purchase {purchase.purchase_invoice_no} recorded and inventory updated.",
+            'message': f"Purchase {purchase.purchase_invoice_no} recorded and inventory automatically updated (+{sum(q for _, q, _, _, _ in purchase_items_to_create)} PCS added).",
             'purchase': PurchaseSerializer(purchase).data
         }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET', 'DELETE'])
+@permission_classes([AllowAny])
+def purchase_detail(request, pk):
+    try:
+        purchase = Purchase.objects.select_related('supplier').prefetch_related('items__product').get(pk=pk)
+    except Purchase.DoesNotExist:
+        return Response({'success': False, 'message': 'Purchase not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        return Response({'success': True, 'data': PurchaseSerializer(purchase).data})
+
+    elif request.method == 'DELETE':
+        with transaction.atomic():
+            for itm in purchase.items.all():
+                prod = itm.product
+                prev_q = prod.available_quantity
+                prod.available_quantity = max(0, prod.available_quantity - itm.quantity)
+                prod.save()
+
+                StockMovement.objects.create(
+                    product=prod,
+                    movement_type='OUTWARD_RETURN',
+                    quantity_changed=-itm.quantity,
+                    previous_quantity=prev_q,
+                    new_quantity=prod.available_quantity,
+                    reference_type='PURCHASE_CANCEL',
+                    reference_id=purchase.purchase_invoice_no,
+                    notes=f"Purchase cancelled/deleted: {purchase.purchase_invoice_no}"
+                )
+
+            if purchase.supplier and purchase.balance_amount > 0:
+                purchase.supplier.pending_balance = max(Decimal('0.00'), purchase.supplier.pending_balance - purchase.balance_amount)
+                purchase.supplier.save()
+
+            purchase.delete()
+
+        return Response({'success': True, 'message': 'Purchase deleted and stock reverted.'})
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
+def suppliers_list_create(request):
+    if request.method == 'GET':
+        suppliers = Supplier.objects.all().order_by('name')
+        return Response({'success': True, 'count': suppliers.count(), 'data': SupplierSerializer(suppliers, many=True).data})
+
+    elif request.method == 'POST':
+        data = request.data
+        name = (data.get('name') or '').strip()
+        if not name:
+            return Response({'success': False, 'message': 'Supplier name is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        supplier = Supplier.objects.create(
+            supplier_code=data.get('supplier_code') or f"SUP-{uuid.uuid4().hex[:6].upper()}",
+            name=name,
+            contact_person=(data.get('contact_person') or '').strip(),
+            phone=(data.get('phone') or 'N/A').strip(),
+            email=(data.get('email') or '').strip(),
+            address=(data.get('address') or '').strip(),
+            gstin=(data.get('gstin') or '').strip(),
+            is_factory=bool(data.get('is_factory', False)),
+            pending_balance=Decimal(str(data.get('pending_balance', 0)))
+        )
+        return Response({'success': True, 'message': 'Supplier registered successfully.', 'data': SupplierSerializer(supplier).data}, status=status.HTTP_201_CREATED)
 
 # -----------------------------------------------------------------------------
 # 7. PROFIT & LOSS REPORT (Actual Math: Revenue - COGS - Expenses)

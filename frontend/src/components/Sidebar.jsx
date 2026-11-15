@@ -14,7 +14,8 @@ import {
   LogOut,
   X,
   ShieldCheck,
-  Clock
+  Clock,
+  Truck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -30,12 +31,13 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   // Admin is one: Anyone who is not OWNER gets the Staff Navigation Suite
   const isStaff = user?.role !== 'OWNER';
 
-  // Specific 8 modules for Staff, full management suite for Owner
+  // Specific modules for Staff, full management suite for Owner
   const navItems = isStaff
     ? [
         { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { name: 'Sales & Billing', path: '/sales/create', icon: FileText },
         { name: 'Inventory', path: '/stock', icon: Package },
+        { name: 'Purchase & Restock', path: '/purchases', icon: Truck },
         { name: 'Customer Management', path: '/customers', icon: Users },
         { name: 'EMI Management', path: '/emi', icon: CreditCard },
         { name: 'Attendance', path: '/attendance', icon: CalendarCheck },
@@ -46,6 +48,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { name: 'Sales & Invoices', path: '/sales', icon: FileText },
         { name: 'Inventory / Stock', path: '/stock', icon: Package },
+        { name: 'Purchase & Restock', path: '/purchases', icon: Truck },
         { name: 'Customer Management', path: '/customers', icon: Users },
         { name: 'EMI Management', path: '/emi', icon: CreditCard },
         { name: 'Staff Management', path: '/employees', icon: ShieldCheck },

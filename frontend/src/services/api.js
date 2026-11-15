@@ -792,13 +792,37 @@ export const purchasesAPI = {
           total_amount: Number(data.total_amount || 0),
           paid_amount: Number(data.paid_amount || 0),
           balance_amount: Math.max(0, Number(data.total_amount || 0) - Number(data.paid_amount || 0)),
-          payment_status: Number(data.paid_amount || 0) >= Number(data.total_amount || 0) ? 'PAID' : 'PARTIAL'
+          payment_status: Number(data.paid_amount || 0) >= Number(data.total_amount || 0) ? 'PAID' : (Number(data.paid_amount || 0) > 0 ? 'PARTIAL' : 'UNPAID')
         };
         mockStore.purchases.unshift(newPur);
         return { success: true, message: 'Purchase logged and stock updated.', purchase: newPur };
       }
     );
   },
+  delete: async (id) => {
+    return safeCall(
+      API.delete(`/purchases/${id}/`),
+      () => {
+        mockStore.purchases = mockStore.purchases.filter(p => p.id !== id);
+        return { success: true, message: 'Purchase deleted and stock reverted.' };
+      }
+    );
+  }
+};
+
+export const suppliersAPI = {
+  getAll: async () => {
+    return safeCall(
+      API.get('/suppliers/'),
+      () => ({ success: true, count: 0, data: [] })
+    );
+  },
+  create: async (data) => {
+    return safeCall(
+      API.post('/suppliers/', data),
+      () => ({ success: true, message: 'Supplier created.', data })
+    );
+  }
 };
 
 export const profitLossAPI = {

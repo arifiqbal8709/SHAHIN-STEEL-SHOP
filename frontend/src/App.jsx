@@ -10,6 +10,7 @@ import Sales from './pages/Sales';
 import CreateBill from './pages/CreateBill';
 import TaxInvoice from './pages/TaxInvoice';
 import StockManagement from './pages/StockManagement';
+import PurchaseManagement from './pages/PurchaseManagement';
 import Customers from './pages/Customers';
 import EMIManagement from './pages/EMIManagement';
 import EmployeeManagement from './pages/EmployeeManagement';
@@ -68,6 +69,9 @@ function App() {
 
             {/* 3. Inventory / Stock */}
             <Route path="/stock" element={<ProtectedRoute><StockManagement /></ProtectedRoute>} />
+
+            {/* 3.5 Purchase & Stock Restock */}
+            <Route path="/purchases" element={<ProtectedRoute><PurchaseManagement /></ProtectedRoute>} />
 
             {/* 4. Customer Management */}
             <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />

@@ -30,8 +30,10 @@ urlpatterns = [
     path('emi/<int:pk>/', views.emi_account_detail, name='emi_account_detail'),
     path('emi/installments/<int:installment_id>/pay/', views.record_emi_payment, name='record_emi_payment'),
 
-    # Purchases
+    # Purchases & Restock
     path('purchases/', views.purchase_list_create, name='purchase_list_create'),
+    path('purchases/<int:pk>/', views.purchase_detail, name='purchase_detail'),
+    path('suppliers/', views.suppliers_list_create, name='suppliers_list_create'),
 
     # Customers
     path('customers/', views.customer_list, name='customer_list'),

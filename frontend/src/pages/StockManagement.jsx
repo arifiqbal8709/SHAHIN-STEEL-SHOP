@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Package, Plus, Search, AlertTriangle, ArrowUpDown, History,
-  CheckCircle2, X, Filter, RefreshCw, ShieldCheck, Trash2, Edit3, Save
+  CheckCircle2, X, Filter, RefreshCw, ShieldCheck, Trash2, Edit3, Save, Truck
 } from 'lucide-react';
 import { stockAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const StockManagement = () => {
   const { user, isOwner } = useAuth();
+  const navigate = useNavigate();
   // Staff cannot edit or adjust stock: only Owner/Admin has permission!
   const canModifyStock = isOwner();
 
@@ -253,7 +255,14 @@ const StockManagement = () => {
             Opening/Closing Stock, Inward, Outward, Adjustments for Plastic, Wooden &amp; Steel lines.
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={() => navigate('/purchases?action=new')}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C49A6C] hover:bg-[#b58957] text-[#211F1C] text-xs font-black transition-all shadow-subtle cursor-pointer"
+            title="Record incoming stock purchase and auto-add quantities to inventory"
+          >
+            <Truck size={16} /> + Buy / Restock Inventory
+          </button>
           {isOwner() && products.length > 0 && (
             <button
               onClick={handleClearAllStock}
@@ -266,7 +275,7 @@ const StockManagement = () => {
           {canModifyStock ? (
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#211F1C] text-white hover:bg-[#C49A6C] hover:text-[#211F1C] text-xs font-bold transition-all shadow-subtle"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#211F1C] text-white hover:bg-[#C49A6C] hover:text-[#211F1C] text-xs font-bold transition-all shadow-subtle cursor-pointer"
             >
               <Plus size={16} /> Add Product
             </button>
