@@ -19,7 +19,8 @@ import {
   Building2,
   FileText,
   CreditCard,
-  UserCheck
+  UserCheck,
+  Sparkles
 } from 'lucide-react';
 import { purchasesAPI, stockAPI, suppliersAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -66,6 +67,7 @@ const PurchaseManagement = () => {
     {
       product_id: '',
       product_name: '',
+      category: 'Steel Items',
       quantity: 1,
       unit_cost: 0,
       selling_price: 0,
@@ -118,6 +120,7 @@ const PurchaseManagement = () => {
             {
               product_id: prod.id,
               product_name: prod.product_name,
+              category: prod.category_name || prod.category || 'Steel Items',
               quantity: 1,
               unit_cost: Number(prod.purchase_price || 0),
               selling_price: Number(prod.selling_price || 0),
@@ -155,17 +158,18 @@ const PurchaseManagement = () => {
   };
 
   // Item Rows Handlers
-  const handleAddItemRow = () => {
+  const handleAddItemRow = (isNew = false) => {
     setPurchaseItems([
       ...purchaseItems,
       {
         product_id: '',
         product_name: '',
+        category: 'Steel Items',
         quantity: 1,
         unit_cost: 0,
         selling_price: 0,
         unit: 'PCS',
-        is_new_product: false
+        is_new_product: isNew
       }
     ]);
   };
@@ -179,14 +183,23 @@ const PurchaseManagement = () => {
   const handleItemChange = (idx, field, value) => {
     const updated = [...purchaseItems];
     if (field === 'product_id') {
-      updated[idx].product_id = value;
-      const selectedProd = products.find(p => String(p.id) === String(value));
-      if (selectedProd) {
-        updated[idx].product_name = selectedProd.product_name;
-        updated[idx].unit_cost = Number(selectedProd.purchase_price || 0);
-        updated[idx].selling_price = Number(selectedProd.selling_price || 0);
-        updated[idx].unit = selectedProd.unit || 'PCS';
-        updated[idx].is_new_product = false;
+      if (value === '__NEW_PRODUCT__') {
+        updated[idx].is_new_product = true;
+        updated[idx].product_id = '';
+        updated[idx].product_name = '';
+        updated[idx].category = 'Steel Items';
+        updated[idx].unit = 'PCS';
+      } else {
+        updated[idx].product_id = value;
+        const selectedProd = products.find(p => String(p.id) === String(value));
+        if (selectedProd) {
+          updated[idx].is_new_product = false;
+          updated[idx].product_name = selectedProd.product_name;
+          updated[idx].category = selectedProd.category_name || selectedProd.category || 'Steel Items';
+          updated[idx].unit_cost = Number(selectedProd.purchase_price || 0);
+          updated[idx].selling_price = Number(selectedProd.selling_price || 0);
+          updated[idx].unit = selectedProd.unit || 'PCS';
+        }
       }
     } else {
       updated[idx][field] = value;
@@ -245,8 +258,9 @@ const PurchaseManagement = () => {
         payment_mode: invoiceDetails.payment_mode,
         notes: invoiceDetails.notes.trim(),
         items: validItems.map(itm => ({
-          product_id: itm.product_id || null,
+          product_id: itm.is_new_product ? null : (itm.product_id || null),
           product_name: itm.product_name.trim(),
+          category: itm.category || 'Steel Items',
           quantity: Number(itm.quantity),
           unit_cost: Number(itm.unit_cost),
           selling_price: Number(itm.selling_price || 0),
@@ -278,6 +292,7 @@ const PurchaseManagement = () => {
           {
             product_id: '',
             product_name: '',
+            category: 'Steel Items',
             quantity: 1,
             unit_cost: 0,
             selling_price: 0,
@@ -758,71 +773,133 @@ const PurchaseManagement = () => {
 
               {/* Step 3: Purchase Product Items */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between pb-1 border-b border-[#E5E2DE]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-[#E5E2DE]">
                   <div>
                     <span className="text-xs font-extrabold text-[#211F1C] flex items-center gap-1.5">
                       <Package size={15} className="text-[#C49A6C]" />
                       <span>Items to Buy / Restock (Automatic Stock Addition)</span>
                     </span>
                     <p className="text-[10px] text-stone-500">
-                      Choose showroom product from dropdown OR type new product name directly
+                      Choose showroom product from catalog OR add brand new product directly to inventory
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleAddItemRow}
-                    className="px-2.5 py-1 bg-[#EEE6DB] hover:bg-[#C49A6C] text-[#211F1C] rounded-lg text-xs font-bold transition-all flex items-center gap-1"
-                  >
-                    <Plus size={13} /> + Add Another Product
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleAddItemRow(false)}
+                      className="px-2.5 py-1 bg-[#EEE6DB] hover:bg-[#C49A6C] text-[#211F1C] rounded-lg text-xs font-bold transition-all flex items-center gap-1"
+                    >
+                      <Plus size={13} /> + Existing Item
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddItemRow(true)}
+                      className="px-2.5 py-1 bg-[#211F1C] hover:bg-stone-800 text-[#C49A6C] rounded-lg text-xs font-bold transition-all flex items-center gap-1 border border-[#C49A6C]/40 shadow-xs"
+                    >
+                      <Sparkles size={13} /> + New Product
+                    </button>
+                  </div>
                 </div>
 
-                <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
                   {purchaseItems.map((itm, idx) => {
                     const selectedProd = products.find(p => String(p.id) === String(itm.product_id));
                     return (
                       <div
                         key={idx}
-                        className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E5E2DE] grid grid-cols-12 gap-2.5 items-center"
+                        className={`p-3 rounded-xl border grid grid-cols-12 gap-2.5 items-center transition-all ${
+                          itm.is_new_product
+                            ? 'bg-amber-50/40 border-amber-300'
+                            : 'bg-[#FAF8F5] border-[#E5E2DE]'
+                        }`}
                       >
                         {/* Product Selector / Name */}
-                        <div className="col-span-12 sm:col-span-4">
-                          <label className="block text-[9px] font-bold text-stone-400 uppercase mb-0.5">
-                            Product Item (Select from Inventory) *
-                          </label>
-                          {products.length > 0 ? (
-                            <div className="space-y-1">
-                              <select
-                                value={itm.product_id}
-                                onChange={(e) => handleItemChange(idx, 'product_id', e.target.value)}
-                                className="w-full px-2 py-1.5 bg-white rounded-lg border border-[#E5E2DE] text-xs font-bold text-[#211F1C] truncate"
+                        <div className="col-span-12 sm:col-span-5">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <label className="block text-[9px] font-bold uppercase tracking-wider text-stone-500">
+                              {itm.is_new_product ? '✨ Brand New Product' : '📦 Showroom Product *'}
+                            </label>
+                            {/* Toggle between existing and new */}
+                            <div className="flex items-center bg-stone-200/70 p-0.5 rounded-lg border border-stone-300 text-[10px]">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = [...purchaseItems];
+                                  updated[idx].is_new_product = false;
+                                  setPurchaseItems(updated);
+                                }}
+                                className={`px-2 py-0.5 rounded font-bold transition-all ${
+                                  !itm.is_new_product ? 'bg-[#211F1C] text-white shadow-xs' : 'text-stone-600 hover:text-black'
+                                }`}
                               >
-                                <option value="">-- Select Showroom Product ({products.length}) --</option>
-                                {products.map(p => (
-                                  <option key={p.id} value={p.id}>
-                                    {p.product_name} (Current Stock: {p.available_quantity} {p.unit || 'PCS'})
-                                  </option>
-                                ))}
-                              </select>
-                              {!itm.product_id && (
-                                <input
-                                  type="text"
-                                  placeholder="Or type new product name to add new item..."
-                                  value={itm.product_name}
-                                  onChange={(e) => handleItemChange(idx, 'product_name', e.target.value)}
-                                  className="w-full px-2 py-1 bg-white rounded-lg border border-dashed border-[#C49A6C] text-[11px] font-semibold"
-                                />
-                              )}
+                                Existing
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = [...purchaseItems];
+                                  updated[idx].is_new_product = true;
+                                  updated[idx].product_id = '';
+                                  setPurchaseItems(updated);
+                                }}
+                                className={`px-2 py-0.5 rounded font-bold transition-all ${
+                                  itm.is_new_product ? 'bg-[#C49A6C] text-[#211F1C] shadow-xs' : 'text-stone-600 hover:text-black'
+                                }`}
+                              >
+                                + New
+                              </button>
                             </div>
+                          </div>
+
+                          {!itm.is_new_product ? (
+                            <select
+                              value={itm.product_id}
+                              onChange={(e) => handleItemChange(idx, 'product_id', e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-white rounded-lg border border-[#E5E2DE] text-xs font-bold text-[#211F1C] truncate"
+                            >
+                              <option value="">-- Select Showroom Product ({products.length}) --</option>
+                              <option value="__NEW_PRODUCT__" className="text-amber-800 font-extrabold bg-amber-50">
+                                ✨ + Add Brand New Product (Create in Inventory)...
+                              </option>
+                              {products.map(p => (
+                                <option key={p.id} value={p.id}>
+                                  {p.product_name} (Current Stock: {p.available_quantity} {p.unit || 'PCS'})
+                                </option>
+                              ))}
+                            </select>
                           ) : (
-                            <input
-                              type="text"
-                              required
-                              placeholder="Product name (e.g. 4-Door Almirah)"
-                              value={itm.product_name}
-                              onChange={(e) => handleItemChange(idx, 'product_name', e.target.value)}
-                              className="w-full px-2 py-1.5 bg-white rounded-lg border border-[#E5E2DE] text-xs font-semibold"
-                            />
+                            <div className="space-y-1.5 animate-fadeIn">
+                              <input
+                                type="text"
+                                required
+                                placeholder="New Product Name (e.g. 6-Door Steel Almirah)"
+                                value={itm.product_name}
+                                onChange={(e) => handleItemChange(idx, 'product_name', e.target.value)}
+                                className="w-full px-2.5 py-1.5 bg-white rounded-lg border border-[#C49A6C] text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#C49A6C]"
+                              />
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <select
+                                  value={itm.category || 'Steel Items'}
+                                  onChange={(e) => handleItemChange(idx, 'category', e.target.value)}
+                                  className="w-full px-2 py-1 bg-white rounded-md border border-[#E5E2DE] text-[10px] font-bold text-stone-700"
+                                >
+                                  <option value="Steel Items">Steel Items</option>
+                                  <option value="Wooden Items">Wooden Items</option>
+                                  <option value="Plastic Items">Plastic Items</option>
+                                </select>
+                                <select
+                                  value={itm.unit || 'PCS'}
+                                  onChange={(e) => handleItemChange(idx, 'unit', e.target.value)}
+                                  className="w-full px-2 py-1 bg-white rounded-md border border-[#E5E2DE] text-[10px] font-bold text-stone-700"
+                                >
+                                  <option value="PCS">PCS (Pieces)</option>
+                                  <option value="SET">SET</option>
+                                  <option value="NOS">NOS (Numbers)</option>
+                                  <option value="DOZEN">DOZEN</option>
+                                  <option value="BOX">BOX</option>
+                                </select>
+                              </div>
+                            </div>
                           )}
                         </div>
 
@@ -844,7 +921,7 @@ const PurchaseManagement = () => {
                         {/* Buying Price (Unit Cost) */}
                         <div className="col-span-4 sm:col-span-2">
                           <label className="block text-[9px] font-bold text-stone-400 uppercase mb-0.5">
-                            Buying Cost (₹)
+                            Buying Cost (₹) *
                           </label>
                           <input
                             type="number"
@@ -856,7 +933,7 @@ const PurchaseManagement = () => {
                           />
                         </div>
 
-                        {/* Selling Price (Optional Showroom Rate) */}
+                        {/* Selling Price (Showroom Rate) */}
                         <div className="col-span-4 sm:col-span-2">
                           <label className="block text-[9px] font-bold text-stone-400 uppercase mb-0.5">
                             Selling Rate (₹)
@@ -891,9 +968,9 @@ const PurchaseManagement = () => {
                           </button>
                         </div>
 
-                        {/* Live Existing Stock Indicator Badge */}
-                        {selectedProd && (
-                          <div className="col-span-12 mt-1.5 flex flex-wrap items-center justify-between text-[11px] bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-300 text-emerald-950">
+                        {/* Existing Product Stock Preview Badge */}
+                        {selectedProd && !itm.is_new_product && (
+                          <div className="col-span-12 mt-1 flex flex-wrap items-center justify-between text-[11px] bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-300 text-emerald-950">
                             <div className="flex items-center gap-1.5 font-bold">
                               <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
                               <span>Direct Inward to: <strong>{selectedProd.product_name}</strong></span>
@@ -902,6 +979,24 @@ const PurchaseManagement = () => {
                               <span>Current Stock: <strong className="font-mono">{selectedProd.available_quantity} {selectedProd.unit || 'PCS'}</strong></span>
                               <span className="text-emerald-800 font-extrabold bg-emerald-200/90 px-2.5 py-0.5 rounded-full border border-emerald-400">
                                 + {Number(itm.quantity || 0)} Inward = New Stock: {selectedProd.available_quantity + Number(itm.quantity || 0)} {selectedProd.unit || 'PCS'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Brand New Product Creation Badge */}
+                        {itm.is_new_product && (
+                          <div className="col-span-12 mt-1 flex flex-wrap items-center justify-between text-[11px] bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-950">
+                            <div className="flex items-center gap-1.5 font-bold">
+                              <Sparkles size={14} className="text-amber-600 shrink-0" />
+                              <span>✨ <strong>Brand New Catalog Product:</strong> Will be automatically created in Inventory</span>
+                            </div>
+                            <div className="flex items-center gap-2 font-semibold text-[11px]">
+                              <span className="bg-amber-200/80 px-2.5 py-0.5 rounded text-amber-900 font-bold">
+                                Category: {itm.category || 'Steel Items'}
+                              </span>
+                              <span className="bg-amber-200/80 px-2.5 py-0.5 rounded text-amber-900 font-bold">
+                                Initial Stock: {itm.quantity} {itm.unit || 'PCS'}
                               </span>
                             </div>
                           </div>

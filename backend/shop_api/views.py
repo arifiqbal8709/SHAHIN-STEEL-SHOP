@@ -1306,12 +1306,22 @@ def purchase_list_create(request):
                     p_name = itm['product_name'].strip()
                     prod = Product.objects.filter(product_name__iexact=p_name).first()
                     if not prod:
-                        cat = Category.objects.first()
+                        cat_name = (itm.get('category') or 'Steel Items').strip()
+                        cat, _ = Category.objects.get_or_create(
+                            name=cat_name,
+                            defaults={'code': f"CAT-{cat_name[:3].upper()}"}
+                        )
                         cost_val = Decimal(str(itm.get('unit_cost', 0)))
                         selling_val = Decimal(str(itm.get('selling_price') or (cost_val * Decimal('1.30'))))
+                        cat_prefix = cat_name[:3].upper() if cat_name else 'ITM'
+                        count = Product.objects.count() + 1
+                        raw_code = itm.get('product_code') or f"PROD-{cat_prefix}-{count:03d}"
+                        while Product.objects.filter(product_code=raw_code).exists():
+                            raw_code = f"PROD-{cat_prefix}-{uuid.uuid4().hex[:4].upper()}"
+
                         prod = Product.objects.create(
                             product_name=p_name,
-                            product_code=itm.get('product_code') or f"PRD-{uuid.uuid4().hex[:6].upper()}",
+                            product_code=raw_code,
                             category=cat,
                             purchase_price=cost_val,
                             selling_price=selling_val,
