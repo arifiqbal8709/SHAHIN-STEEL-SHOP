@@ -13,5 +13,10 @@
     "backend": "cd backend && python manage.py runserver 0.0.0.0:8000",
     "migrate": "cd backend && python manage.py migrate",
     "seed": "cd backend && python manage.py seed_demo_data"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.68.1",
+    "@rollup/rollup-linux-x64-musl": "4.68.1",
+    "@esbuild/linux-x64": "0.25.12"
   }
 }
