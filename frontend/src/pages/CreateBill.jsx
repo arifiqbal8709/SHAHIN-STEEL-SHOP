@@ -548,24 +548,17 @@ const CreateBill = () => {
     setSubmitting(true);
     try {
       const payload = {
-        customer: invoiceType === 'ESTIMATE_BILL' ? {
-          name: customer.name,
-          phone: customer.phone,
-          address: customer.address || '',
-          city: '',
-          pincode: '',
-          gstin: ''
-        } : customer,
-        shipping_details: invoiceType === 'TAX_INVOICE' ? (sameAsCustomer ? {
+        customer,
+        shipping_details: sameAsCustomer ? {
           name: customer.name,
           address: customer.address,
           place_of_supply: customer.city || 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO',
           gstin: customer.gstin || '',
           state_code: customer.pincode || '827013'
-        } : shippingDetails) : null,
+        } : shippingDetails,
         custom_invoice_number: customInvoiceNumber.trim(),
         gst_type: invoiceType === 'ESTIMATE_BILL' ? 'NONE' : gstType,
-        reverse_charge: invoiceType === 'TAX_INVOICE' ? reverseCharge : 'No',
+        reverse_charge: reverseCharge,
         items: validItems,
         discount_overall: canGiveDiscount ? discountOverall : 0,
         payments: finalPayments,
@@ -660,8 +653,8 @@ const CreateBill = () => {
             </button>
           </div>
 
-          {/* GST Region Toggle for Tax Invoice */}
-          {invoiceType === 'TAX_INVOICE' && (
+          {/* GST Region Toggle for Tax Invoice or Clean No GST Pill for Estimate */}
+          {invoiceType === 'TAX_INVOICE' ? (
             <div className="flex items-center gap-1 bg-[#F7F5F0] p-1 rounded-xl border border-[#E5E2DE] text-xs">
               <button
                 type="button"
@@ -683,6 +676,13 @@ const CreateBill = () => {
               >
                 CGST 9% + SGST 9%
               </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 bg-[#F7F5F0] px-3 py-1.5 rounded-xl border border-[#E5E2DE] text-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span className="font-bold text-[11px] text-[#71717A]">
+                No GST (0% Retail Estimate)
+              </span>
             </div>
           )}
         </div>
@@ -911,161 +911,157 @@ const CreateBill = () => {
             </div>
           </div>
 
-          {/* Row 2: GSTIN, Place of Supply, State Code, Reverse Charge (Only for Tax Invoice) */}
-          {invoiceType === 'TAX_INVOICE' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-[#E5E2DE] animate-fadeIn">
+          {/* Row 2: GSTIN, Place of Supply, State Code, Reverse Charge */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-[#E5E2DE]">
+            <div>
+              <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">
+                Customer GSTIN <span className="text-[10px] text-stone-400 font-normal">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. 22AAAAA0000A1Z5"
+                value={customer.gstin}
+                onChange={(e) => setCustomer({ ...customer, gstin: e.target.value.toUpperCase() })}
+                className="w-full px-3.5 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-mono uppercase focus:outline-none focus:border-[#C49A6C]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Place of Supply</label>
+              <input
+                type="text"
+                placeholder="HAJI NAGAR ANSARI MOHALLA CHAS BOKARO"
+                value={customer.city}
+                onChange={(e) => setCustomer({ ...customer, city: e.target.value })}
+                className="w-full px-3.5 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs focus:outline-none focus:border-[#C49A6C]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">State Code / PIN</label>
+              <input
+                type="text"
+                placeholder="827013"
+                value={customer.pincode}
+                onChange={(e) => setCustomer({ ...customer, pincode: e.target.value })}
+                className="w-full px-3.5 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs focus:outline-none focus:border-[#C49A6C]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Reverse Charges</label>
+              <select
+                value={reverseCharge}
+                onChange={(e) => setReverseCharge(e.target.value)}
+                className="w-full px-3.5 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-semibold focus:outline-none focus:border-[#C49A6C]"
+              >
+                <option value="No">No (Default)</option>
+                <option value="Yes">Yes</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Shipping Details Box (Manual or Automatic Fill) ── */}
+        <div className="bg-white p-6 rounded-2xl border border-[#E5E2DE] shadow-subtle">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 className="font-serif font-bold text-sm text-[#211F1C] flex items-center gap-2">
+                <span>Shipping Details</span>
+                <span className="text-[10px] font-semibold text-[#71717A]">(Delivery &amp; Consignee on Invoice)</span>
+              </h3>
+              <p className="text-[11px] text-[#71717A]">
+                Automatic fill from customer or toggle off to customize shipping address manually
+              </p>
+            </div>
+
+            {/* Checkbox: Same as Customer Details */}
+            <label className="flex items-center gap-2.5 cursor-pointer select-none bg-[#F7F5F0] px-4 py-2 rounded-xl border border-[#E5E2DE] hover:border-[#C49A6C] transition-all">
+              <input
+                type="checkbox"
+                checked={sameAsCustomer}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setSameAsCustomer(checked);
+                  if (checked) {
+                    setShippingDetails({
+                      name: customer.name || '',
+                      address: customer.address || '',
+                      place_of_supply: customer.city || 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO',
+                      gstin: customer.gstin || '',
+                      state_code: customer.pincode || '827013'
+                    });
+                  }
+                }}
+                className="w-4 h-4 text-[#211F1C] rounded border-gray-300 focus:ring-0 accent-[#211F1C]"
+              />
+              <span className="text-xs font-extrabold text-[#211F1C]">
+                Same as Customer Details (Automatic)
+              </span>
+            </label>
+          </div>
+
+          {sameAsCustomer ? (
+            <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs text-emerald-950 flex items-center gap-2.5 font-medium">
+              <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+              <span>
+                Shipping Details are set to <strong>Automatic</strong>: Recipient Name, Delivery Address, Place of Supply, and GSTIN will automatically match Customer Details on the printed Tax Invoice. Uncheck the box above to enter custom/manual shipping details.
+              </span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 animate-fadeIn">
               <div>
-                <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">
-                  Customer GSTIN <span className="text-[10px] text-stone-400 font-normal">(Optional)</span>
-                </label>
+                <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Shipping Recipient Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. 22AAAAA0000A1Z5"
-                  value={customer.gstin}
-                  onChange={(e) => setCustomer({ ...customer, gstin: e.target.value.toUpperCase() })}
-                  className="w-full px-3.5 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-mono uppercase focus:outline-none focus:border-[#C49A6C]"
+                  placeholder="e.g. ABDULLAH"
+                  value={shippingDetails.name}
+                  onChange={(e) => setShippingDetails({ ...shippingDetails, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-semibold focus:outline-none focus:border-[#C49A6C]"
                 />
               </div>
-
+              <div className="md:col-span-2">
+                <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Shipping Delivery Address</label>
+                <input
+                  type="text"
+                  placeholder="e.g. ANSARI MOHALLA, HAZI NAGAR, CHAS near Akash hospital"
+                  value={shippingDetails.address}
+                  onChange={(e) => setShippingDetails({ ...shippingDetails, address: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-semibold focus:outline-none focus:border-[#C49A6C]"
+                />
+              </div>
               <div>
                 <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Place of Supply</label>
                 <input
                   type="text"
                   placeholder="HAJI NAGAR ANSARI MOHALLA CHAS BOKARO"
-                  value={customer.city}
-                  onChange={(e) => setCustomer({ ...customer, city: e.target.value })}
-                  className="w-full px-3.5 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs focus:outline-none focus:border-[#C49A6C]"
+                  value={shippingDetails.place_of_supply}
+                  onChange={(e) => setShippingDetails({ ...shippingDetails, place_of_supply: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-semibold focus:outline-none focus:border-[#C49A6C]"
                 />
               </div>
-
               <div>
-                <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">State Code / PIN</label>
-                <input
-                  type="text"
-                  placeholder="827013"
-                  value={customer.pincode}
-                  onChange={(e) => setCustomer({ ...customer, pincode: e.target.value })}
-                  className="w-full px-3.5 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs focus:outline-none focus:border-[#C49A6C]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Reverse Charges</label>
-                <select
-                  value={reverseCharge}
-                  onChange={(e) => setReverseCharge(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-semibold focus:outline-none focus:border-[#C49A6C]"
-                >
-                  <option value="No">No (Default)</option>
-                  <option value="Yes">Yes</option>
-                </select>
+                <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Shipping GSTIN / State Code</label>
+                <div className="grid grid-cols-2 gap-1">
+                  <input
+                    type="text"
+                    placeholder="GSTIN"
+                    value={shippingDetails.gstin}
+                    onChange={(e) => setShippingDetails({ ...shippingDetails, gstin: e.target.value.toUpperCase() })}
+                    className="w-full px-2 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-[11px] font-mono focus:outline-none focus:border-[#C49A6C]"
+                  />
+                  <input
+                    type="text"
+                    placeholder="827013"
+                    value={shippingDetails.state_code}
+                    onChange={(e) => setShippingDetails({ ...shippingDetails, state_code: e.target.value })}
+                    className="w-full px-2 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-[11px] focus:outline-none focus:border-[#C49A6C]"
+                  />
+                </div>
               </div>
             </div>
           )}
         </div>
-
-        {/* ── Shipping Details Box (Only for Tax Invoice - Hidden automatically for Estimate Bill) ── */}
-        {invoiceType === 'TAX_INVOICE' && (
-          <div className="bg-white p-6 rounded-2xl border border-[#E5E2DE] shadow-subtle animate-fadeIn">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <div>
-                <h3 className="font-serif font-bold text-sm text-[#211F1C] flex items-center gap-2">
-                  <span>Shipping Details</span>
-                  <span className="text-[10px] font-semibold text-[#71717A]">(Delivery &amp; Consignee on Invoice)</span>
-                </h3>
-                <p className="text-[11px] text-[#71717A]">
-                  Automatic fill from customer or toggle off to customize shipping address manually
-                </p>
-              </div>
-
-              {/* Checkbox: Same as Customer Details */}
-              <label className="flex items-center gap-2.5 cursor-pointer select-none bg-[#F7F5F0] px-4 py-2 rounded-xl border border-[#E5E2DE] hover:border-[#C49A6C] transition-all">
-                <input
-                  type="checkbox"
-                  checked={sameAsCustomer}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setSameAsCustomer(checked);
-                    if (checked) {
-                      setShippingDetails({
-                        name: customer.name || '',
-                        address: customer.address || '',
-                        place_of_supply: customer.city || 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO',
-                        gstin: customer.gstin || '',
-                        state_code: customer.pincode || '827013'
-                      });
-                    }
-                  }}
-                  className="w-4 h-4 text-[#211F1C] rounded border-gray-300 focus:ring-0 accent-[#211F1C]"
-                />
-                <span className="text-xs font-extrabold text-[#211F1C]">
-                  Same as Customer Details (Automatic)
-                </span>
-              </label>
-            </div>
-
-            {sameAsCustomer ? (
-              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs text-emerald-950 flex items-center gap-2.5 font-medium">
-                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-                <span>
-                  Shipping Details are set to <strong>Automatic</strong>: Recipient Name, Delivery Address, Place of Supply, and GSTIN will automatically match Customer Details on the printed Tax Invoice. Uncheck the box above to enter custom/manual shipping details.
-                </span>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 animate-fadeIn">
-                <div>
-                  <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Shipping Recipient Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. ABDULLAH"
-                    value={shippingDetails.name}
-                    onChange={(e) => setShippingDetails({ ...shippingDetails, name: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-semibold focus:outline-none focus:border-[#C49A6C]"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Shipping Delivery Address</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. ANSARI MOHALLA, HAZI NAGAR, CHAS near Akash hospital"
-                    value={shippingDetails.address}
-                    onChange={(e) => setShippingDetails({ ...shippingDetails, address: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-semibold focus:outline-none focus:border-[#C49A6C]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Place of Supply</label>
-                  <input
-                    type="text"
-                    placeholder="HAJI NAGAR ANSARI MOHALLA CHAS BOKARO"
-                    value={shippingDetails.place_of_supply}
-                    onChange={(e) => setShippingDetails({ ...shippingDetails, place_of_supply: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-semibold focus:outline-none focus:border-[#C49A6C]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Shipping GSTIN / State Code</label>
-                  <div className="grid grid-cols-2 gap-1">
-                    <input
-                      type="text"
-                      placeholder="GSTIN"
-                      value={shippingDetails.gstin}
-                      onChange={(e) => setShippingDetails({ ...shippingDetails, gstin: e.target.value.toUpperCase() })}
-                      className="w-full px-2 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-[11px] font-mono focus:outline-none focus:border-[#C49A6C]"
-                    />
-                    <input
-                      type="text"
-                      placeholder="827013"
-                      value={shippingDetails.state_code}
-                      onChange={(e) => setShippingDetails({ ...shippingDetails, state_code: e.target.value })}
-                      className="w-full px-2 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-[11px] focus:outline-none focus:border-[#C49A6C]"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Product Selection Rows */}
         <div className="bg-white p-6 rounded-2xl border border-[#E5E2DE] shadow-subtle">
