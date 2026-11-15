@@ -1,17 +1,28 @@
 import axios from 'axios';
 
 const getBaseURL = () => {
-  // If hosted or custom env variable provided
+  // 1. If explicit env variable is set
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
-  if (typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    return `http://${window.location.hostname}:8000/api`;
+  // 2. Production Vercel / Cloud deployment automatic fallback
+  if (typeof window !== 'undefined' && window.location.hostname) {
+    const h = window.location.hostname.toLowerCase();
+    if (h.includes('vercel.app') || h.includes('netlify.app')) {
+      return 'https://shahin-steel-backend.vercel.app/api';
+    }
+    if (h !== 'localhost' && h !== '127.0.0.1') {
+      return `http://${window.location.hostname}:8000/api`;
+    }
   }
+  // 3. Local development
   return 'http://127.0.0.1:8000/api';
 };
 
-const isCloudConfigured = Boolean(import.meta.env.VITE_API_URL);
+const isCloudConfigured = Boolean(
+  import.meta.env.VITE_API_URL || 
+  (typeof window !== 'undefined' && (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('netlify.app')))
+);
 
 // Clear any stale local demo/cache store on cloud deployments so old data is never shown after refresh
 if (isCloudConfigured && typeof window !== 'undefined') {
