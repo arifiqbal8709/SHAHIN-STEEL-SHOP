@@ -703,6 +703,7 @@ def sales_list_create(request):
         with transaction.atomic():
             # 1. Resolve or Create Customer (Automatically added to Customer Management)
             phone = customer_data.get('phone', '').strip()
+            cust_gstin = (customer_data.get('gstin') or data.get('customer_gstin') or '').strip()
             if not phone:
                 phone = f"999{uuid.uuid4().hex[:7]}"
             customer, created = Customer.objects.get_or_create(
@@ -714,6 +715,7 @@ def sales_list_create(request):
                     'city': customer_data.get('city', 'Chas, Bokaro'),
                     'state': customer_data.get('state', 'Jharkhand'),
                     'pincode': customer_data.get('pincode', '827013'),
+                    'gstin': cust_gstin,
                 }
             )
             if not created:
@@ -725,14 +727,28 @@ def sales_list_create(request):
                     customer.address = customer_data.get('address')
                 if customer_data.get('city'):
                     customer.city = customer_data.get('city')
+                if cust_gstin:
+                    customer.gstin = cust_gstin
                 customer.save()
 
-            # 2. Generate Unique Invoice Number
-            today = timezone.localdate()
-            today_str = today.strftime('%Y%m%d')
-            count_today = Sale.objects.filter(sale_date__date=today).count() + 1
-            prefix = "EST" if invoice_type == 'ESTIMATE_BILL' else "SSF"
-            invoice_num = f"{prefix}-{today_str}-{count_today:03d}"
+            # 2. Custom or Auto-Generated Invoice Number
+            custom_inv = (data.get('custom_invoice_number') or data.get('invoice_number') or '').strip()
+            if custom_inv:
+                if Sale.objects.filter(invoice_number__iexact=custom_inv).exists():
+                    return Response({
+                        'success': False,
+                        'message': f"Invoice number '{custom_inv}' already exists. Please enter a unique invoice number."
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                invoice_num = custom_inv
+            else:
+                today = timezone.localdate()
+                today_str = today.strftime('%Y%m%d')
+                count_today = Sale.objects.filter(sale_date__date=today).count() + 1
+                prefix = "EST" if invoice_type == 'ESTIMATE_BILL' else "TAX"
+                invoice_num = f"{prefix}-{count_today:03d}"
+                # If collision occurs, add day prefix
+                if Sale.objects.filter(invoice_number=invoice_num).exists():
+                    invoice_num = f"{prefix}-{today_str}-{count_today:03d}"
 
             # 3. Calculate Totals & Validate Stock
             subtotal = Decimal('0.00')
@@ -777,14 +793,22 @@ def sales_list_create(request):
             discount_overall = Decimal(str(data.get('discount_overall', 0)))
             taxable = subtotal - discount_overall
             
-            # Tax calculations (18% GST split: 9% CGST + 9% SGST for tax invoices)
+            # Tax calculations (18% GST: CGST 9% + SGST 9% for intra-state, or IGST 18% for inter-state)
+            gst_type = data.get('gst_type', 'INTRA_STATE') # 'INTRA_STATE' | 'INTER_STATE'
             if invoice_type == 'TAX_INVOICE':
-                cgst = (taxable * Decimal('9.00')) / Decimal('100.00')
-                sgst = (taxable * Decimal('9.00')) / Decimal('100.00')
-                grand_total = taxable + cgst + sgst
+                if gst_type == 'INTER_STATE':
+                    cgst = Decimal('0.00')
+                    sgst = Decimal('0.00')
+                    igst = (taxable * Decimal('18.00')) / Decimal('100.00')
+                else:
+                    cgst = (taxable * Decimal('9.00')) / Decimal('100.00')
+                    sgst = (taxable * Decimal('9.00')) / Decimal('100.00')
+                    igst = Decimal('0.00')
+                grand_total = taxable + cgst + sgst + igst
             else:
                 cgst = Decimal('0.00')
                 sgst = Decimal('0.00')
+                igst = Decimal('0.00')
                 grand_total = taxable
 
             # 4. Handle Payments (supports split payments like Cash + UPI)
@@ -820,6 +844,17 @@ def sales_list_create(request):
                 if target_emp and target_emp.user:
                     sales_user = target_emp.user
 
+            # Resolve Shipping and Place of Supply Details
+            shipping_data = data.get('shipping_details', {})
+            ship_name = (shipping_data.get('name') or customer.name or '').strip()
+            ship_addr = (shipping_data.get('address') or customer.address or '').strip()
+            ship_pos = (shipping_data.get('place_of_supply') or shipping_data.get('city') or customer.city or 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO').strip()
+            ship_gstin = (shipping_data.get('gstin') or cust_gstin or '').strip()
+            ship_state_code = (shipping_data.get('state_code') or customer_data.get('state_code') or customer.pincode or '827013').strip()
+            pos = (data.get('place_of_supply') or customer.city or customer.address or 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO').strip()
+            st_code = (data.get('state_code') or customer_data.get('state_code') or customer.pincode or '827013').strip()
+            rev_charge = (data.get('reverse_charge') or 'No').strip()
+
             # Create Sale Record
             sale = Sale.objects.create(
                 invoice_number=invoice_num,
@@ -829,6 +864,16 @@ def sales_list_create(request):
                 taxable_amount=taxable,
                 cgst_amount=cgst,
                 sgst_amount=sgst,
+                igst_amount=igst,
+                customer_gstin=cust_gstin,
+                place_of_supply=pos,
+                state_code=st_code,
+                shipping_name=ship_name,
+                shipping_address=ship_addr,
+                shipping_place_of_supply=ship_pos,
+                shipping_gstin=ship_gstin,
+                shipping_state_code=ship_state_code,
+                reverse_charge=rev_charge,
                 grand_total=grand_total,
                 total_cogs=total_cogs,
                 net_profit=grand_total - total_cogs,

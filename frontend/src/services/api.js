@@ -473,7 +473,9 @@ export const salesAPI = {
     return safeCall(
       API.post('/sales/', data),
       () => {
-        const invNum = `SSF-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${(mockStore.sales.length + 1).toString().padStart(3, '0')}`;
+        const customInv = (data.custom_invoice_number || data.invoice_number || '').trim();
+        const prefix = data.invoice_type === 'ESTIMATE_BILL' ? 'EST' : 'TAX';
+        const invNum = customInv || `${prefix}-${(mockStore.sales.length + 1).toString().padStart(3, '0')}`;
         
         let subtotal = 0;
         const lineItems = (data.items || []).map(itm => {
@@ -497,12 +499,17 @@ export const salesAPI = {
         const discountOverall = Number(data.discount_overall || 0);
         const taxable = subtotal - discountOverall;
         const isTaxInv = data.invoice_type !== 'ESTIMATE_BILL';
-        const cgst = isTaxInv ? taxable * 0.09 : 0;
-        const sgst = isTaxInv ? taxable * 0.09 : 0;
-        const grandTotal = taxable + cgst + sgst;
+        const isInterState = data.gst_type === 'INTER_STATE';
+        const cgst = isTaxInv && !isInterState ? taxable * 0.09 : 0;
+        const sgst = isTaxInv && !isInterState ? taxable * 0.09 : 0;
+        const igst = isTaxInv && isInterState ? taxable * 0.18 : 0;
+        const grandTotal = taxable + cgst + sgst + igst;
 
         const totalPaid = (data.payments || []).reduce((acc, p) => acc + Number(p.amount || 0), 0);
         const balance = Math.max(0, grandTotal - totalPaid);
+
+        const shippingData = data.shipping_details || {};
+        const custGstin = (data.customer?.gstin || data.customer_gstin || '').trim();
 
         const newSale = {
           id: mockStore.sales.length + 1,
@@ -510,11 +517,23 @@ export const salesAPI = {
           customer_name: data.customer?.name || 'Customer',
           customer_phone: data.customer?.phone || '9999999999',
           customer_address: (data.customer?.address || '').trim() || 'N/A',
+          customer_city: data.customer?.city || 'BOKARO, JHARKHAND',
+          customer_gstin: custGstin,
+          place_of_supply: data.place_of_supply || data.customer?.city || 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO',
+          state_code: data.state_code || data.customer?.pincode || '827013',
+          shipping_name: shippingData.name || data.customer?.name || 'Customer',
+          shipping_address: (shippingData.address || data.customer?.address || '').trim() || 'N/A',
+          shipping_place_of_supply: shippingData.place_of_supply || shippingData.city || data.customer?.city || 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO',
+          shipping_gstin: shippingData.gstin || custGstin,
+          shipping_state_code: shippingData.state_code || data.customer?.pincode || '827013',
+          reverse_charge: data.reverse_charge || 'No',
+          gst_type: data.gst_type || 'INTRA_STATE',
           sale_date: new Date().toISOString(),
           subtotal,
           taxable_amount: taxable,
           cgst_amount: cgst,
           sgst_amount: sgst,
+          igst_amount: igst,
           grand_total: grandTotal,
           amount_paid: totalPaid,
           balance_amount: balance,

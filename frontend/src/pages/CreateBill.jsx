@@ -54,13 +54,40 @@ const CreateBill = () => {
 
   // Invoice Form State
   const [invoiceType, setInvoiceType] = useState('TAX_INVOICE'); // or ESTIMATE_BILL
+  const [customInvoiceNumber, setCustomInvoiceNumber] = useState('');
+  const [gstType, setGstType] = useState('INTER_STATE'); // 'INTRA_STATE' (CGST 9% + SGST 9%) or 'INTER_STATE' (IGST 18%)
+  const [reverseCharge, setReverseCharge] = useState('No');
+  const [sameAsCustomer, setSameAsCustomer] = useState(true);
   const [customer, setCustomer] = useState({
     name: '',
     phone: '',
     address: '',
-    city: '',
-    state: ''
+    city: 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO',
+    state: 'Jharkhand',
+    pincode: '827013',
+    gstin: ''
   });
+
+  const [shippingDetails, setShippingDetails] = useState({
+    name: '',
+    address: '',
+    place_of_supply: 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO',
+    gstin: '',
+    state_code: '827013'
+  });
+
+  // Keep shipping details synced with customer when sameAsCustomer is true
+  useEffect(() => {
+    if (sameAsCustomer) {
+      setShippingDetails({
+        name: customer.name || '',
+        address: customer.address || '',
+        place_of_supply: customer.city || 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO',
+        gstin: customer.gstin || '',
+        state_code: customer.pincode || '827013'
+      });
+    }
+  }, [customer, sameAsCustomer]);
 
   // Quick Add Customer Modal
   const [isQuickCustomerOpen, setIsQuickCustomerOpen] = useState(false);
@@ -68,8 +95,10 @@ const CreateBill = () => {
     name: '',
     phone: '',
     address: '',
-    city: '',
-    state: ''
+    city: 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO',
+    state: 'Jharkhand',
+    pincode: '827013',
+    gstin: ''
   });
   const [quickCustError, setQuickCustError] = useState('');
 
@@ -170,15 +199,28 @@ const CreateBill = () => {
   // Select registered customer & auto-fill their info & previous dues
   const handleSelectCustomer = (cust) => {
     if (!cust) return;
+    const custCity = cust.city || 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO';
+    const custStateCode = cust.pincode || '827013';
     setCustomer({
       name: cust.name,
       phone: cust.phone || '',
       address: cust.address || '',
-      city: cust.city || 'Chas, Bokaro',
+      city: custCity,
       state: cust.state || 'Jharkhand',
+      pincode: custStateCode,
+      gstin: cust.gstin || '',
       id: cust.id,
       previous_due: Number(cust.total_outstanding || 0)
     });
+    if (sameAsCustomer) {
+      setShippingDetails({
+        name: cust.name,
+        address: cust.address || '',
+        place_of_supply: custCity,
+        gstin: cust.gstin || '',
+        state_code: custStateCode
+      });
+    }
     setSelectedCustomerId(cust.id);
     setSelectedCustomerDue(Number(cust.total_outstanding || 0));
     setIsCustomerDropdownOpen(false);
@@ -191,8 +233,10 @@ const CreateBill = () => {
       name: '',
       phone: '',
       address: '',
-      city: 'Chas, Bokaro',
-      state: 'Jharkhand'
+      city: 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO',
+      state: 'Jharkhand',
+      pincode: '827013',
+      gstin: ''
     });
     setIsCustomerDropdownOpen(false);
   };
@@ -267,11 +311,22 @@ const CreateBill = () => {
           name: created.name,
           phone: created.phone,
           address: created.address || '',
-          city: created.city || 'Chas, Bokaro',
-          state: created.state || 'Jharkhand'
+          city: created.city || 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO',
+          state: created.state || 'Jharkhand',
+          pincode: created.pincode || '827013',
+          gstin: created.gstin || quickCustForm.gstin || ''
         });
+        if (sameAsCustomer) {
+          setShippingDetails({
+            name: created.name,
+            address: created.address || '',
+            place_of_supply: created.city || 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO',
+            gstin: created.gstin || quickCustForm.gstin || '',
+            state_code: created.pincode || '827013'
+          });
+        }
         setIsQuickCustomerOpen(false);
-        setQuickCustForm({ name: '', phone: '', address: '', city: 'Chas, Bokaro', state: 'Jharkhand' });
+        setQuickCustForm({ name: '', phone: '', address: '', city: 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO', state: 'Jharkhand', pincode: '827013', gstin: '' });
         fetchCustomers();
       } else {
         setQuickCustError(res?.message || 'Failed to add customer.');
@@ -312,9 +367,11 @@ const CreateBill = () => {
   // Calculations
   const subtotal = items.reduce((acc, itm) => acc + ((itm.quantity * itm.unit_price) - itm.discount), 0);
   const taxable = Math.max(0, subtotal - Number(discountOverall));
-  const cgst = invoiceType === 'TAX_INVOICE' ? taxable * 0.09 : 0;
-  const sgst = invoiceType === 'TAX_INVOICE' ? taxable * 0.09 : 0;
-  const grandTotal = taxable + cgst + sgst;
+  const isInterState = gstType === 'INTER_STATE';
+  const cgst = invoiceType === 'TAX_INVOICE' && !isInterState ? taxable * 0.09 : 0;
+  const sgst = invoiceType === 'TAX_INVOICE' && !isInterState ? taxable * 0.09 : 0;
+  const igst = invoiceType === 'TAX_INVOICE' && isInterState ? taxable * 0.18 : 0;
+  const grandTotal = taxable + cgst + sgst + igst;
 
   // Track items sold below purchase price (Cost Price Alert)
   const priceAlertItems = items.filter(itm => {
@@ -492,6 +549,16 @@ const CreateBill = () => {
     try {
       const payload = {
         customer,
+        shipping_details: sameAsCustomer ? {
+          name: customer.name,
+          address: customer.address,
+          place_of_supply: customer.city || 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO',
+          gstin: customer.gstin || '',
+          state_code: customer.pincode || '827013'
+        } : shippingDetails,
+        custom_invoice_number: customInvoiceNumber.trim(),
+        gst_type: gstType,
+        reverse_charge: reverseCharge,
         items: validItems,
         discount_overall: canGiveDiscount ? discountOverall : 0,
         payments: finalPayments,
@@ -538,26 +605,79 @@ const CreateBill = () => {
           </div>
         </div>
 
-        {/* Invoice Type Radio */}
-        <div className="flex items-center gap-2 bg-[#F7F5F0] p-1 rounded-xl border border-[#E5E2DE]">
-          <button
-            type="button"
-            onClick={() => setInvoiceType('TAX_INVOICE')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              invoiceType === 'TAX_INVOICE' ? 'bg-[#211F1C] text-white' : 'text-[#71717A]'
-            }`}
-          >
-            GST Tax Invoice (18%)
-          </button>
-          <button
-            type="button"
-            onClick={() => setInvoiceType('ESTIMATE_BILL')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              invoiceType === 'ESTIMATE_BILL' ? 'bg-[#211F1C] text-white' : 'text-[#71717A]'
-            }`}
-          >
-            Estimate / Retail Bill
-          </button>
+        {/* Controls: Invoice Type, Number & GST Options */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Custom Invoice Number Input */}
+          <div className="flex items-center gap-1.5 bg-[#F7F5F0] px-3 py-1.5 rounded-xl border border-[#E5E2DE]">
+            <label className="text-[11px] font-bold text-[#71717A] uppercase whitespace-nowrap">
+              Invoice No:
+            </label>
+            <input
+              type="text"
+              placeholder="Auto (e.g. TAX-001)"
+              value={customInvoiceNumber}
+              onChange={(e) => setCustomInvoiceNumber(e.target.value)}
+              className="px-2.5 py-1 bg-white rounded-lg border border-[#E5E2DE] text-xs font-bold text-[#211F1C] focus:outline-none focus:border-[#C49A6C] w-36 uppercase placeholder:text-[10px]"
+            />
+            {customInvoiceNumber && (
+              <button
+                type="button"
+                onClick={() => setCustomInvoiceNumber('')}
+                className="text-[10px] text-stone-500 hover:text-stone-900 font-bold px-1"
+                title="Reset to Auto"
+              >
+                Auto
+              </button>
+            )}
+          </div>
+
+          {/* Invoice Type Radio */}
+          <div className="flex items-center gap-1 bg-[#F7F5F0] p-1 rounded-xl border border-[#E5E2DE]">
+            <button
+              type="button"
+              onClick={() => setInvoiceType('TAX_INVOICE')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                invoiceType === 'TAX_INVOICE' ? 'bg-[#211F1C] text-white shadow-xs' : 'text-[#71717A]'
+              }`}
+            >
+              GST Tax Invoice (18%)
+            </button>
+            <button
+              type="button"
+              onClick={() => setInvoiceType('ESTIMATE_BILL')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                invoiceType === 'ESTIMATE_BILL' ? 'bg-[#211F1C] text-white shadow-xs' : 'text-[#71717A]'
+              }`}
+            >
+              Estimate / Retail Bill
+            </button>
+          </div>
+
+          {/* GST Region Toggle for Tax Invoice */}
+          {invoiceType === 'TAX_INVOICE' && (
+            <div className="flex items-center gap-1 bg-[#F7F5F0] p-1 rounded-xl border border-[#E5E2DE] text-xs">
+              <button
+                type="button"
+                onClick={() => setGstType('INTER_STATE')}
+                className={`px-2.5 py-1.5 rounded-lg font-bold text-[11px] transition-all ${
+                  gstType === 'INTER_STATE' ? 'bg-[#C49A6C] text-[#211F1C] shadow-gold-glow' : 'text-[#71717A]'
+                }`}
+                title="Outside Jharkhand (IGST 18% as in sample)"
+              >
+                IGST 18% (Inter-State)
+              </button>
+              <button
+                type="button"
+                onClick={() => setGstType('INTRA_STATE')}
+                className={`px-2.5 py-1.5 rounded-lg font-bold text-[11px] transition-all ${
+                  gstType === 'INTRA_STATE' ? 'bg-[#211F1C] text-white shadow-xs' : 'text-[#71717A]'
+                }`}
+                title="Within Jharkhand (CGST 9% + SGST 9%)"
+              >
+                CGST 9% + SGST 9%
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -773,16 +893,167 @@ const CreateBill = () => {
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Showroom Delivery Address</label>
+              <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Customer Address</label>
               <input
                 type="text"
-                placeholder="Area, Street, City"
+                placeholder="e.g. HAJI NAGAR ANSARI MOHALLA CHAS BOKARO"
                 value={customer.address}
                 onChange={(e) => setCustomer({ ...customer, address: e.target.value })}
                 className="w-full px-3.5 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs focus:outline-none focus:border-[#C49A6C]"
               />
             </div>
           </div>
+
+          {/* Row 2: GSTIN, Place of Supply, State Code, Reverse Charge */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-[#E5E2DE]">
+            <div>
+              <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">
+                Customer GSTIN <span className="text-[10px] text-stone-400 font-normal">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. 22AAAAA0000A1Z5"
+                value={customer.gstin}
+                onChange={(e) => setCustomer({ ...customer, gstin: e.target.value.toUpperCase() })}
+                className="w-full px-3.5 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-mono uppercase focus:outline-none focus:border-[#C49A6C]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Place of Supply</label>
+              <input
+                type="text"
+                placeholder="HAJI NAGAR ANSARI MOHALLA CHAS BOKARO"
+                value={customer.city}
+                onChange={(e) => setCustomer({ ...customer, city: e.target.value })}
+                className="w-full px-3.5 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs focus:outline-none focus:border-[#C49A6C]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">State Code / PIN</label>
+              <input
+                type="text"
+                placeholder="827013"
+                value={customer.pincode}
+                onChange={(e) => setCustomer({ ...customer, pincode: e.target.value })}
+                className="w-full px-3.5 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs focus:outline-none focus:border-[#C49A6C]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Reverse Charges</label>
+              <select
+                value={reverseCharge}
+                onChange={(e) => setReverseCharge(e.target.value)}
+                className="w-full px-3.5 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-semibold focus:outline-none focus:border-[#C49A6C]"
+              >
+                <option value="No">No (Default)</option>
+                <option value="Yes">Yes</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Shipping Details Box (Manual or Automatic Fill) ── */}
+        <div className="bg-white p-6 rounded-2xl border border-[#E5E2DE] shadow-subtle">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 className="font-serif font-bold text-sm text-[#211F1C] flex items-center gap-2">
+                <span>Shipping Details</span>
+                <span className="text-[10px] font-semibold text-[#71717A]">(Delivery &amp; Consignee on Invoice)</span>
+              </h3>
+              <p className="text-[11px] text-[#71717A]">
+                Automatic fill from customer or toggle off to customize shipping address manually
+              </p>
+            </div>
+
+            {/* Checkbox: Same as Customer Details */}
+            <label className="flex items-center gap-2.5 cursor-pointer select-none bg-[#F7F5F0] px-4 py-2 rounded-xl border border-[#E5E2DE] hover:border-[#C49A6C] transition-all">
+              <input
+                type="checkbox"
+                checked={sameAsCustomer}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setSameAsCustomer(checked);
+                  if (checked) {
+                    setShippingDetails({
+                      name: customer.name || '',
+                      address: customer.address || '',
+                      place_of_supply: customer.city || 'HAJI NAGAR ANSARI MOHALLA CHAS BOKARO',
+                      gstin: customer.gstin || '',
+                      state_code: customer.pincode || '827013'
+                    });
+                  }
+                }}
+                className="w-4 h-4 text-[#211F1C] rounded border-gray-300 focus:ring-0 accent-[#211F1C]"
+              />
+              <span className="text-xs font-extrabold text-[#211F1C]">
+                Same as Customer Details (Automatic)
+              </span>
+            </label>
+          </div>
+
+          {sameAsCustomer ? (
+            <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs text-emerald-950 flex items-center gap-2.5 font-medium">
+              <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+              <span>
+                Shipping Details are set to <strong>Automatic</strong>: Recipient Name, Delivery Address, Place of Supply, and GSTIN will automatically match Customer Details on the printed Tax Invoice. Uncheck the box above to enter custom/manual shipping details.
+              </span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 animate-fadeIn">
+              <div>
+                <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Shipping Recipient Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. ABDULLAH"
+                  value={shippingDetails.name}
+                  onChange={(e) => setShippingDetails({ ...shippingDetails, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-semibold focus:outline-none focus:border-[#C49A6C]"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Shipping Delivery Address</label>
+                <input
+                  type="text"
+                  placeholder="e.g. ANSARI MOHALLA, HAZI NAGAR, CHAS near Akash hospital"
+                  value={shippingDetails.address}
+                  onChange={(e) => setShippingDetails({ ...shippingDetails, address: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-semibold focus:outline-none focus:border-[#C49A6C]"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Place of Supply</label>
+                <input
+                  type="text"
+                  placeholder="HAJI NAGAR ANSARI MOHALLA CHAS BOKARO"
+                  value={shippingDetails.place_of_supply}
+                  onChange={(e) => setShippingDetails({ ...shippingDetails, place_of_supply: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-semibold focus:outline-none focus:border-[#C49A6C]"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[#71717A] uppercase mb-1">Shipping GSTIN / State Code</label>
+                <div className="grid grid-cols-2 gap-1">
+                  <input
+                    type="text"
+                    placeholder="GSTIN"
+                    value={shippingDetails.gstin}
+                    onChange={(e) => setShippingDetails({ ...shippingDetails, gstin: e.target.value.toUpperCase() })}
+                    className="w-full px-2 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-[11px] font-mono focus:outline-none focus:border-[#C49A6C]"
+                  />
+                  <input
+                    type="text"
+                    placeholder="827013"
+                    value={shippingDetails.state_code}
+                    onChange={(e) => setShippingDetails({ ...shippingDetails, state_code: e.target.value })}
+                    className="w-full px-2 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-[11px] focus:outline-none focus:border-[#C49A6C]"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Product Selection Rows */}
@@ -1799,6 +2070,18 @@ const CreateBill = () => {
                   value={quickCustForm.address}
                   onChange={(e) => setQuickCustForm({ ...quickCustForm, address: e.target.value })}
                   className="w-full px-3 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs focus:outline-none focus:border-[#C49A6C]"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-[#71717A] uppercase mb-1">
+                  Customer GSTIN <span className="text-stone-400 font-normal">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 22AAAAA0000A1Z5"
+                  value={quickCustForm.gstin}
+                  onChange={(e) => setQuickCustForm({ ...quickCustForm, gstin: e.target.value.toUpperCase() })}
+                  className="w-full px-3 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-mono uppercase focus:outline-none focus:border-[#C49A6C]"
                 />
               </div>
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5E2DE]">

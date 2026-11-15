@@ -44,6 +44,7 @@ const Customers = () => {
     city: '',
     state: '',
     pincode: '',
+    gstin: '',
     opening_balance: 0,
     notes: ''
   });
@@ -632,6 +633,20 @@ const Customers = () => {
                 />
               </div>
 
+              {/* Customer GSTIN */}
+              <div>
+                <label className="block text-[11px] font-bold text-[#71717A] uppercase tracking-wider mb-1">
+                  Customer GSTIN <span className="text-[10px] text-stone-400 font-normal">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 22AAAAA0000A1Z5"
+                  value={formData.gstin || ''}
+                  onChange={(e) => handleInputChange('gstin', e.target.value.toUpperCase())}
+                  className="w-full px-3.5 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-mono uppercase text-[#211F1C] focus:outline-none focus:border-[#C49A6C]"
+                />
+              </div>
+
               {/* City, State, Pincode */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
@@ -820,6 +835,20 @@ const Customers = () => {
                   value={editData.address}
                   onChange={(e) => handleEditInputChange('address', e.target.value)}
                   className="w-full px-3.5 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs text-[#211F1C] focus:outline-none focus:border-[#C49A6C]"
+                />
+              </div>
+
+              {/* Customer GSTIN */}
+              <div>
+                <label className="block text-[11px] font-bold text-[#71717A] uppercase tracking-wider mb-1">
+                  Customer GSTIN <span className="text-[10px] text-stone-400 font-normal">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 22AAAAA0000A1Z5"
+                  value={editData?.gstin || ''}
+                  onChange={(e) => handleEditInputChange('gstin', e.target.value.toUpperCase())}
+                  className="w-full px-3.5 py-2 bg-[#F7F5F0] rounded-xl border border-[#E5E2DE] text-xs font-mono uppercase text-[#211F1C] focus:outline-none focus:border-[#C49A6C]"
                 />
               </div>
 
