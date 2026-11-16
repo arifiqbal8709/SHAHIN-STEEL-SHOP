@@ -28,9 +28,21 @@ const TaxInvoiceTemplate = ({ sale }) => {
     return words ? `${words} Rupees Only` : 'Zero Rupees Only';
   };
 
-  const invoiceDateStr = sale.sale_date
-    ? new Date(sale.sale_date).toISOString().slice(0, 10)
-    : new Date().toISOString().slice(0, 10);
+  const invoiceDateStr = (() => {
+    if (!sale.sale_date) {
+      const d = new Date();
+      return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    }
+    if (typeof sale.sale_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(sale.sale_date.trim())) {
+      const [y, m, d] = sale.sale_date.trim().split('-');
+      return `${d}/${m}/${y}`;
+    }
+    const d = new Date(sale.sale_date);
+    if (!isNaN(d.getTime())) {
+      return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    }
+    return String(sale.sale_date);
+  })();
 
   const customerName = (sale.customer_name || sale.customer?.name || 'Cash Customer').trim();
   const customerAddress = (sale.customer_address || sale.customer?.address || 'Haji Nagar, Chas, Bokaro').trim();

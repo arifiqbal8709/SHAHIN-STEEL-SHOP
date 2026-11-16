@@ -731,7 +731,24 @@ def sales_list_create(request):
                     customer.gstin = cust_gstin
                 customer.save()
 
-            # 2. Custom or Auto-Generated Invoice Number
+            # 2. Resolve Sale / Bill Date (Manual custom date or current local time)
+            custom_date_str = (data.get('invoice_date') or data.get('sale_date') or '').strip()
+            if custom_date_str:
+                try:
+                    if len(custom_date_str) == 10:
+                        parsed_d = datetime.strptime(custom_date_str, "%Y-%m-%d").date()
+                        now_time = get_local_now().time()
+                        sale_dt = timezone.make_aware(datetime.combine(parsed_d, now_time))
+                    else:
+                        sale_dt = datetime.fromisoformat(custom_date_str.replace('Z', '+00:00'))
+                        if timezone.is_naive(sale_dt):
+                            sale_dt = timezone.make_aware(sale_dt)
+                except Exception:
+                    sale_dt = get_local_now()
+            else:
+                sale_dt = get_local_now()
+
+            # Custom or Auto-Generated Invoice Number
             custom_inv = (data.get('custom_invoice_number') or data.get('invoice_number') or '').strip()
             if custom_inv:
                 if Sale.objects.filter(invoice_number__iexact=custom_inv).exists():
@@ -741,14 +758,14 @@ def sales_list_create(request):
                     }, status=status.HTTP_400_BAD_REQUEST)
                 invoice_num = custom_inv
             else:
-                today = timezone.localdate()
-                today_str = today.strftime('%Y%m%d')
-                count_today = Sale.objects.filter(sale_date__date=today).count() + 1
+                bill_date = sale_dt.date()
+                bill_date_str = bill_date.strftime('%Y%m%d')
+                count_today = Sale.objects.filter(sale_date__date=bill_date).count() + 1
                 prefix = "EST" if invoice_type == 'ESTIMATE_BILL' else "TAX"
                 invoice_num = f"{prefix}-{count_today:03d}"
                 # If collision occurs, add day prefix
                 if Sale.objects.filter(invoice_number=invoice_num).exists():
-                    invoice_num = f"{prefix}-{today_str}-{count_today:03d}"
+                    invoice_num = f"{prefix}-{bill_date_str}-{count_today:03d}"
 
             # 3. Calculate Totals & Validate Stock
             subtotal = Decimal('0.00')
@@ -859,6 +876,7 @@ def sales_list_create(request):
             sale = Sale.objects.create(
                 invoice_number=invoice_num,
                 customer=customer,
+                sale_date=sale_dt,
                 subtotal=subtotal,
                 discount_amount=discount_overall,
                 taxable_amount=taxable,
@@ -922,6 +940,7 @@ def sales_list_create(request):
                     payment_reference_no=f"PAY-{uuid.uuid4().hex[:8].upper()}",
                     sale=sale,
                     customer=customer,
+                    payment_date=sale_dt,
                     amount=pay['amount'],
                     payment_mode=pay['mode'],
                     transaction_id=pay['tx_id'],
@@ -948,13 +967,13 @@ def sales_list_create(request):
                     paid_amount=Decimal('0.00'),
                     remaining_balance=principal,
                     status='ACTIVE',
-                    start_date=today,
+                    start_date=sale_dt.date(),
                     due_day_of_month=int(emi_plan.get('due_day', 5))
                 )
 
                 # Generate EMI Installment Schedules
                 due_day = int(emi_plan.get('due_day', 5))
-                current_date = today
+                current_date = sale_dt.date()
                 for i in range(1, total_months + 1):
                     # Next month due date
                     month = (current_date.month + i - 1) % 12 + 1
@@ -1043,6 +1062,22 @@ def sale_detail(request, invoice_number):
 
             if 'invoice_type' in data:
                 sale.invoice_type = data['invoice_type']
+
+            if 'sale_date' in data or 'invoice_date' in data:
+                d_str = (data.get('sale_date') or data.get('invoice_date') or '').strip()
+                if d_str:
+                    try:
+                        if len(d_str) == 10:
+                            p_date = datetime.strptime(d_str, "%Y-%m-%d").date()
+                            now_t = get_local_now().time()
+                            sale.sale_date = timezone.make_aware(datetime.combine(p_date, now_t))
+                        else:
+                            s_dt = datetime.fromisoformat(d_str.replace('Z', '+00:00'))
+                            if timezone.is_naive(s_dt):
+                                s_dt = timezone.make_aware(s_dt)
+                            sale.sale_date = s_dt
+                    except Exception:
+                        pass
 
             # 3. Overall discount or grand total adjustments if passed
             if 'discount_overall' in data:

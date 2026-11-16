@@ -40,7 +40,15 @@ const EstimateBillTemplate = ({ sale }) => {
   const previousDue = Number(sale.customer?.total_outstanding ? Math.max(0, Number(sale.customer.total_outstanding) - balVal) : (sale.previous_due || 0));
   const netTotalDue = previousDue + balVal;
 
-  const saleDateObj = sale.sale_date ? new Date(sale.sale_date) : new Date();
+  const saleDateObj = (() => {
+    if (!sale.sale_date) return new Date();
+    if (typeof sale.sale_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(sale.sale_date.trim())) {
+      const [y, m, d] = sale.sale_date.trim().split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+    const d = new Date(sale.sale_date);
+    return isNaN(d.getTime()) ? new Date() : d;
+  })();
   const formattedDate = `${String(saleDateObj.getDate()).padStart(2, '0')} / ${String(saleDateObj.getMonth() + 1).padStart(2, '0')} / ${saleDateObj.getFullYear()}`;
 
   const customerName = sale.customer_name || sale.customer?.name || 'Walk-in Customer';

@@ -18,11 +18,20 @@ import {
   RefreshCw,
   Search,
   Package,
-  ChevronDown
+  ChevronDown,
+  Calendar
 } from 'lucide-react';
 import { stockAPI, salesAPI, customersAPI } from '../services/api';
 import PrintInvoiceModal from '../components/PrintInvoiceModal';
 import { useAuth } from '../context/AuthContext';
+
+const getTodayDateString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const CreateBill = () => {
   const { user, isOwner } = useAuth();
@@ -55,6 +64,7 @@ const CreateBill = () => {
   // Invoice Form State
   const [invoiceType, setInvoiceType] = useState('TAX_INVOICE'); // or ESTIMATE_BILL
   const [customInvoiceNumber, setCustomInvoiceNumber] = useState('');
+  const [customInvoiceDate, setCustomInvoiceDate] = useState(getTodayDateString());
   const [gstType, setGstType] = useState('INTER_STATE'); // 'INTRA_STATE' (CGST 9% + SGST 9%) or 'INTER_STATE' (IGST 18%)
   const [reverseCharge, setReverseCharge] = useState('No');
   const [sameAsCustomer, setSameAsCustomer] = useState(true);
@@ -547,6 +557,7 @@ const CreateBill = () => {
 
     setSubmitting(true);
     try {
+      const effectiveDate = (customInvoiceDate && customInvoiceDate.trim()) ? customInvoiceDate.trim() : getTodayDateString();
       const payload = {
         customer,
         shipping_details: sameAsCustomer ? {
@@ -557,6 +568,8 @@ const CreateBill = () => {
           state_code: customer.pincode || '827013'
         } : shippingDetails,
         custom_invoice_number: customInvoiceNumber.trim(),
+        invoice_date: effectiveDate,
+        sale_date: effectiveDate,
         gst_type: invoiceType === 'ESTIMATE_BILL' ? 'NONE' : gstType,
         reverse_charge: reverseCharge,
         items: validItems,
@@ -573,6 +586,7 @@ const CreateBill = () => {
       if (res && res.success) {
         const saleWithPayments = {
           ...res.sale,
+          sale_date: res.sale?.sale_date || effectiveDate,
           payments: res.sale?.payments?.length ? res.sale.payments : finalPayments
         };
         setCreatedSale(saleWithPayments);
@@ -627,6 +641,31 @@ const CreateBill = () => {
                 title="Reset to Auto"
               >
                 Auto
+              </button>
+            )}
+          </div>
+
+          {/* Bill / Invoice Date Input */}
+          <div className="flex items-center gap-1.5 bg-[#F7F5F0] px-3 py-1.5 rounded-xl border border-[#E5E2DE]">
+            <Calendar size={13} className="text-[#71717A] shrink-0" />
+            <label className="text-[11px] font-bold text-[#71717A] uppercase whitespace-nowrap">
+              Date:
+            </label>
+            <input
+              type="date"
+              value={customInvoiceDate}
+              onChange={(e) => setCustomInvoiceDate(e.target.value)}
+              className="px-2 py-1 bg-white rounded-lg border border-[#E5E2DE] text-xs font-bold text-[#211F1C] focus:outline-none focus:border-[#C49A6C] cursor-pointer"
+              title="Manual bill date (defaults to today if unchanged or cleared)"
+            />
+            {customInvoiceDate && customInvoiceDate !== getTodayDateString() && (
+              <button
+                type="button"
+                onClick={() => setCustomInvoiceDate(getTodayDateString())}
+                className="text-[10px] text-stone-500 hover:text-stone-900 font-bold px-1"
+                title="Reset to Today"
+              >
+                Today
               </button>
             )}
           </div>
@@ -1839,6 +1878,16 @@ const CreateBill = () => {
               </h3>
 
               <div className="space-y-2 text-xs">
+                <div className="flex justify-between text-[#A39E98] pb-1 border-b border-white/10">
+                  <span className="flex items-center gap-1">
+                    <Calendar size={12} className="text-[#C49A6C]" />
+                    <span>Bill Date:</span>
+                  </span>
+                  <span className="text-[#C49A6C] font-semibold">
+                    {customInvoiceDate ? customInvoiceDate.split('-').reverse().join('/') : getTodayDateString().split('-').reverse().join('/')}
+                  </span>
+                </div>
+
                 <div className="flex justify-between text-[#A39E98]">
                   <span>Subtotal:</span>
                   <span className="text-white font-bold">₹{subtotal.toLocaleString('en-IN')}</span>

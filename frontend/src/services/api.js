@@ -539,7 +539,13 @@ export const salesAPI = {
           shipping_state_code: shippingData.state_code || data.customer?.pincode || '827013',
           reverse_charge: data.reverse_charge || 'No',
           gst_type: data.gst_type || 'INTRA_STATE',
-          sale_date: new Date().toISOString(),
+          sale_date: (() => {
+            const rawD = (data.invoice_date || data.sale_date || '').trim();
+            if (!rawD) return new Date().toISOString();
+            if (rawD.length === 10) return new Date(`${rawD}T12:00:00`).toISOString();
+            const parsed = new Date(rawD);
+            return isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+          })(),
           subtotal,
           taxable_amount: taxable,
           cgst_amount: cgst,
