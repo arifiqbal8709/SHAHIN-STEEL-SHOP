@@ -1,10 +1,12 @@
-import React, { useRef, useEffect } from 'react';
-import { Printer, Download, ArrowLeft, X } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { Printer, Download, ArrowLeft, X, Loader2 } from 'lucide-react';
 import EstimateBillTemplate from './EstimateBillTemplate';
 import TaxInvoiceTemplate from './TaxInvoiceTemplate';
+import { exportInvoiceToPDF } from '../utils/pdfExport';
 
 const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
   const modalScrollRef = useRef(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // When modal opens, scroll both window and modal container to top, and lock body scroll
   useEffect(() => {
@@ -39,9 +41,9 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
     }
 
     try {
-      // Create hidden iframe for 100% clean, unclipped print without background scrolling or blank page issues
+      // Create hidden iframe with standard A4 canvas proportions for 100% accurate layout rendering
       const iframe = document.createElement('iframe');
-      iframe.setAttribute('style', 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:0;');
+      iframe.setAttribute('style', 'position:fixed;top:0;left:0;width:820px;height:1160px;opacity:0;pointer-events:none;z-index:-9999;border:0;');
       document.body.appendChild(iframe);
 
       const doc = iframe.contentWindow.document;
@@ -58,6 +60,7 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
           <head>
             <title>${invoiceTitle}</title>
             <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
             ${styleTags}
             <style>
               @page {
@@ -66,6 +69,8 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
               }
               * {
                 box-sizing: border-box;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
               }
               html, body {
                 background: #ffffff !important;
@@ -75,8 +80,6 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
                 width: 100% !important;
                 height: auto !important;
                 overflow: visible !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
               }
               .print-container {
@@ -99,7 +102,7 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
       `);
       doc.close();
 
-      setTimeout(() => {
+      const triggerPrint = () => {
         try {
           iframe.contentWindow.focus();
           iframe.contentWindow.print();
@@ -114,7 +117,17 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
             document.title = originalTitle;
           }, 1500);
         }
-      }, 350);
+      };
+
+      if (iframe.contentWindow.document.fonts) {
+        iframe.contentWindow.document.fonts.ready.then(() => {
+          setTimeout(triggerPrint, 250);
+        }).catch(() => {
+          setTimeout(triggerPrint, 400);
+        });
+      } else {
+        setTimeout(triggerPrint, 400);
+      }
     } catch (e) {
       console.warn("Iframe creation failed, using window.print():", e);
       window.print();
@@ -124,8 +137,26 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
     }
   };
 
-  const handleDownloadPDF = () => {
-    handlePrint();
+  const handleDownloadPDF = async () => {
+    const printableElement = document.getElementById('printable-bill-modal-content');
+    if (!printableElement) {
+      handlePrint();
+      return;
+    }
+
+    const prefix = sale.invoice_type === 'ESTIMATE_BILL' ? 'Estimate_Bill' : 'Tax_Invoice';
+    const filename = `${prefix}_${sale.invoice_number || 'Bill'}_SHAHIN_STEEL.pdf`;
+
+    setDownloadingPdf(true);
+    try {
+      await exportInvoiceToPDF(printableElement, filename);
+    } catch (err) {
+      console.error("Direct PDF export failed, falling back to print dialog:", err);
+      // Clean fallback: open browser print dialog if canvas capture fails
+      handlePrint();
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   return (
@@ -222,9 +253,22 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
             </button>
             <button
               onClick={handleDownloadPDF}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition-all shadow-subtle cursor-pointer"
+              disabled={downloadingPdf}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition-all shadow-subtle cursor-pointer ${
+                downloadingPdf ? 'opacity-75 cursor-not-allowed' : ''
+              }`}
             >
-              <Download size={15} /> Download PDF
+              {downloadingPdf ? (
+                <>
+                  <Loader2 size={15} className="animate-spin" />
+                  <span>Generating PDF...</span>
+                </>
+              ) : (
+                <>
+                  <Download size={15} />
+                  <span>Download PDF</span>
+                </>
+              )}
             </button>
             <button
               onClick={onClose}
@@ -257,10 +301,22 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
           <div className="flex items-center gap-2.5">
             <button
               onClick={handleDownloadPDF}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all shadow-subtle cursor-pointer"
+              disabled={downloadingPdf}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all shadow-subtle cursor-pointer ${
+                downloadingPdf ? 'opacity-75 cursor-not-allowed' : ''
+              }`}
             >
-              <Download size={16} />
-              <span>Download PDF</span>
+              {downloadingPdf ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Generating PDF...</span>
+                </>
+              ) : (
+                <>
+                  <Download size={16} />
+                  <span>Download PDF</span>
+                </>
+              )}
             </button>
             <button
               onClick={handlePrint}

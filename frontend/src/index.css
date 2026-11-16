@@ -97,24 +97,37 @@ body {
     visibility: hidden !important;
   }
 
-  /* When modal is open during print, hide background app content */
-  body.has-print-modal #root > *:not(.print-modal-wrapper) {
+  /* When print modal is open, ensure modal wrapper takes over the printed page cleanly */
+  body.has-print-modal {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    overflow: visible !important;
+  }
+
+  body.has-print-modal .no-print {
     display: none !important;
   }
 
-  .print-modal-wrapper {
-    position: static !important;
-    inset: auto !important;
-    background: transparent !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: visible !important;
-    display: block !important;
-    width: 100% !important;
-    height: auto !important;
+  body.has-print-modal aside,
+  body.has-print-modal nav,
+  body.has-print-modal header {
+    display: none !important;
   }
 
-  .print-modal-card {
+  body.has-print-modal .print-modal-wrapper {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background: #FFFFFF !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    z-index: 999999 !important;
+  }
+
+  body.has-print-modal .print-modal-card {
     position: static !important;
     box-shadow: none !important;
     border: none !important;
@@ -123,6 +136,7 @@ body {
     width: 100% !important;
     max-width: 198mm !important;
     overflow: visible !important;
+    background: #FFFFFF !important;
   }
 
   .printable-invoice,

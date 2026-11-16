@@ -1,13 +1,15 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Printer, ArrowLeft } from 'lucide-react';
+import { Printer, ArrowLeft, Download, Loader2 } from 'lucide-react';
 import EstimateBillTemplate from '../components/EstimateBillTemplate';
 import TaxInvoiceTemplate from '../components/TaxInvoiceTemplate';
+import { exportInvoiceToPDF } from '../utils/pdfExport';
 
 const TaxInvoice = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const printRef = useRef();
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const sale = location.state?.sale || location.state?.bill || {
     invoice_number: 'TAX-001',
@@ -39,6 +41,25 @@ const TaxInvoice = () => {
     }, 1200);
   };
 
+  const handleDownloadPDF = async () => {
+    if (!printRef.current) {
+      handlePrint();
+      return;
+    }
+    const prefix = sale.invoice_type === 'ESTIMATE_BILL' ? 'Estimate_Bill' : 'Tax_Invoice';
+    const filename = `${prefix}_${sale.invoice_number || 'Bill'}_SHAHIN_STEEL.pdf`;
+
+    setDownloadingPdf(true);
+    try {
+      await exportInvoiceToPDF(printRef.current, filename);
+    } catch (err) {
+      console.error("PDF export failed, falling back to print dialog:", err);
+      handlePrint();
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-stone-100 p-4 sm:p-8 print:min-h-0 print:p-0 print:m-0 print:bg-white">
       {/* Top action bar (hidden on print) */}
@@ -49,12 +70,33 @@ const TaxInvoice = () => {
         >
           <ArrowLeft size={14} /> Back to Sales
         </button>
-        <button
-          onClick={handlePrint}
-          className="flex items-center gap-1.5 px-4 py-2 bg-stone-900 text-white rounded-lg text-xs font-bold hover:bg-stone-800 shadow cursor-pointer"
-        >
-          <Printer size={15} /> {sale.invoice_type === 'ESTIMATE_BILL' ? 'Print Estimate' : 'Print Tax Invoice'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleDownloadPDF}
+            disabled={downloadingPdf}
+            className={`flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow cursor-pointer ${
+              downloadingPdf ? 'opacity-75 cursor-not-allowed' : ''
+            }`}
+          >
+            {downloadingPdf ? (
+              <>
+                <Loader2 size={15} className="animate-spin" />
+                <span>Generating PDF...</span>
+              </>
+            ) : (
+              <>
+                <Download size={15} />
+                <span>Download PDF</span>
+              </>
+            )}
+          </button>
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-1.5 px-4 py-2 bg-stone-900 text-white rounded-lg text-xs font-bold hover:bg-stone-800 shadow cursor-pointer"
+          >
+            <Printer size={15} /> {sale.invoice_type === 'ESTIMATE_BILL' ? 'Print Estimate' : 'Print Tax Invoice'}
+          </button>
+        </div>
       </div>
 
       {/* Invoice Card Container */}
