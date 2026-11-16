@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import ReactDOM from 'react-dom';
 import { Printer, Download, ArrowLeft, X, Loader2 } from 'lucide-react';
 import EstimateBillTemplate from './EstimateBillTemplate';
 import TaxInvoiceTemplate from './TaxInvoiceTemplate';
@@ -34,127 +35,12 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
     const invoiceTitle = `${prefix}_${sale.invoice_number || 'Bill'}_SHAHIN_STEEL_FURNITURE`;
     document.title = invoiceTitle;
 
-    const printableElement = document.getElementById('printable-bill-modal-content');
-    if (!printableElement) {
-      window.print();
-      return;
-    }
+    // Direct native browser print: prints the already fully-rendered, perfectly styled invoice on screen
+    window.print();
 
-    try {
-      // Create hidden iframe with standard A4 canvas proportions for 100% accurate layout rendering
-      const iframe = document.createElement('iframe');
-      iframe.setAttribute('style', 'position:fixed;top:0;left:0;width:820px;height:1160px;opacity:0;pointer-events:none;z-index:-9999;border:0;');
-      document.body.appendChild(iframe);
-
-      const doc = iframe.contentWindow.document;
-      doc.open();
-
-      // Collect all compiled CSS rules from document stylesheets
-      let allCompiledCss = '';
-      try {
-        for (const sheet of Array.from(document.styleSheets)) {
-          try {
-            if (sheet.cssRules) {
-              for (const rule of Array.from(sheet.cssRules)) {
-                allCompiledCss += rule.cssText + '\n';
-              }
-            }
-          } catch (e) {
-            // cross-origin
-          }
-        }
-      } catch (e) {}
-
-      // Copy all parent document styles and links so fonts and Tailwind render identically
-      const styleTags = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-        .map(tag => tag.outerHTML)
-        .join('\n');
-
-      doc.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>${invoiceTitle}</title>
-            <meta charset="utf-8" />
-            <base href="${window.location.origin}/" />
-            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            ${styleTags}
-            <style type="text/css">
-              ${allCompiledCss}
-            </style>
-            <style>
-              @page {
-                size: A4 portrait;
-                margin: 6mm 8mm;
-              }
-              * {
-                box-sizing: border-box;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-              }
-              html, body {
-                background: #ffffff !important;
-                color: #000000 !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                width: 100% !important;
-                height: auto !important;
-                overflow: visible !important;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-              }
-              .print-container {
-                width: 100% !important;
-                max-width: 198mm !important;
-                margin: 0 auto !important;
-                padding: 0 !important;
-              }
-              .no-print {
-                display: none !important;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="print-container">
-              ${printableElement.innerHTML}
-            </div>
-          </body>
-        </html>
-      `);
-      doc.close();
-
-      const triggerPrint = () => {
-        try {
-          iframe.contentWindow.focus();
-          iframe.contentWindow.print();
-        } catch (err) {
-          console.error("Iframe print error, falling back to window.print():", err);
-          window.print();
-        } finally {
-          setTimeout(() => {
-            if (document.body.contains(iframe)) {
-              document.body.removeChild(iframe);
-            }
-            document.title = originalTitle;
-          }, 1500);
-        }
-      };
-
-      if (iframe.contentWindow.document.fonts) {
-        iframe.contentWindow.document.fonts.ready.then(() => {
-          setTimeout(triggerPrint, 250);
-        }).catch(() => {
-          setTimeout(triggerPrint, 400);
-        });
-      } else {
-        setTimeout(triggerPrint, 400);
-      }
-    } catch (e) {
-      console.warn("Iframe creation failed, using window.print():", e);
-      window.print();
-      setTimeout(() => {
-        document.title = originalTitle;
-      }, 1200);
-    }
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1500);
   };
 
   const handleDownloadPDF = async () => {
@@ -179,28 +65,37 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
     }
   };
 
-  return (
+  const modalContent = (
     <div
       ref={modalScrollRef}
       className="print-modal-wrapper fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-start justify-center p-2 sm:p-4 overflow-y-auto"
     >
-      {/* ── Global Print Styles for direct Ctrl+P ── */}
+      {/* ── Global Print Styles for direct Ctrl+P and Print Button ── */}
       <style>{`
         @media print {
           @page {
             size: A4 portrait;
             margin: 6mm 8mm;
           }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+            box-sizing: border-box !important;
+          }
           html, body {
-            background: white !important;
-            color: black !important;
+            background: #ffffff !important;
+            color: #000000 !important;
             margin: 0 !important;
             padding: 0 !important;
             width: 100% !important;
             height: auto !important;
             overflow: visible !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
+          }
+
+          /* Hide entire main app tree when modal is printing */
+          body.has-print-modal > #root {
+            display: none !important;
           }
 
           .print-modal-wrapper {
@@ -211,6 +106,9 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
             overflow: visible !important;
             display: block !important;
             width: 100% !important;
+            height: auto !important;
+            inset: auto !important;
+            z-index: auto !important;
           }
 
           .print-modal-card {
@@ -218,6 +116,7 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
             background: transparent !important;
             box-shadow: none !important;
             border: none !important;
+            border-radius: 0 !important;
             margin: 0 auto !important;
             padding: 0 !important;
             width: 100% !important;
@@ -231,10 +130,15 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
             width: 100% !important;
             max-width: 198mm !important;
             overflow: visible !important;
+            background: #ffffff !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
 
-          .no-print {
+          .no-print,
+          .no-print * {
             display: none !important;
+            visibility: hidden !important;
           }
         }
       `}</style>
@@ -301,7 +205,7 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
         </div>
 
         {/* Printable Invoice Container */}
-        <div id="printable-bill-modal-content" className="p-3 sm:p-6 bg-white text-black font-sans text-[11px] leading-tight">
+        <div id="printable-bill-modal-content" className="p-3 sm:p-6 bg-white text-black">
           {sale.invoice_type === 'ESTIMATE_BILL' ? (
             <EstimateBillTemplate sale={sale} />
           ) : (
@@ -350,6 +254,8 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
       </div>
     </div>
   );
+
+  return ReactDOM.createPortal(modalContent, document.body);
 };
 
 export default PrintInvoiceModal;
