@@ -49,6 +49,22 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
       const doc = iframe.contentWindow.document;
       doc.open();
 
+      // Collect all compiled CSS rules from document stylesheets
+      let allCompiledCss = '';
+      try {
+        for (const sheet of Array.from(document.styleSheets)) {
+          try {
+            if (sheet.cssRules) {
+              for (const rule of Array.from(sheet.cssRules)) {
+                allCompiledCss += rule.cssText + '\n';
+              }
+            }
+          } catch (e) {
+            // cross-origin
+          }
+        }
+      } catch (e) {}
+
       // Copy all parent document styles and links so fonts and Tailwind render identically
       const styleTags = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
         .map(tag => tag.outerHTML)
@@ -60,8 +76,12 @@ const PrintInvoiceModal = ({ sale, isOpen, onClose }) => {
           <head>
             <title>${invoiceTitle}</title>
             <meta charset="utf-8" />
+            <base href="${window.location.origin}/" />
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
             ${styleTags}
+            <style type="text/css">
+              ${allCompiledCss}
+            </style>
             <style>
               @page {
                 size: A4 portrait;

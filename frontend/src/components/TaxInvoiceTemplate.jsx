@@ -91,8 +91,8 @@ const TaxInvoiceTemplate = ({ sale }) => {
             color: black !important;
             margin: 0 !important;
             padding: 0 !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           .printable-tax-invoice {
             width: 100% !important;
@@ -106,6 +106,63 @@ const TaxInvoiceTemplate = ({ sale }) => {
           .no-print {
             display: none !important;
           }
+        }
+        .printable-tax-invoice {
+          box-sizing: border-box !important;
+          color: #000000 !important;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .printable-tax-invoice * {
+          box-sizing: border-box !important;
+        }
+        .printable-tax-invoice table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+        }
+        .printable-tax-invoice th, .printable-tax-invoice td {
+          border: 1px solid #000000 !important;
+        }
+        .printable-tax-invoice .border-black {
+          border-color: #000000 !important;
+        }
+        .printable-tax-invoice .border-b {
+          border-bottom: 1px solid #000000 !important;
+        }
+        .printable-tax-invoice .border-r {
+          border-right: 1px solid #000000 !important;
+        }
+        .printable-tax-invoice .border-2 {
+          border-width: 2px !important;
+        }
+        .printable-tax-invoice .grid-cols-2 {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+        .printable-tax-invoice .flex {
+          display: flex !important;
+        }
+        .printable-tax-invoice .justify-between {
+          justify-content: space-between !important;
+        }
+        .printable-tax-invoice .items-center {
+          align-items: center !important;
+        }
+        .printable-tax-invoice .text-center {
+          text-align: center !important;
+        }
+        .printable-tax-invoice .text-right {
+          text-align: right !important;
+        }
+        .printable-tax-invoice .text-left {
+          text-align: left !important;
+        }
+        .printable-tax-invoice .font-bold {
+          font-weight: 700 !important;
+        }
+        .printable-tax-invoice .font-black {
+          font-weight: 900 !important;
         }
       `}</style>
 

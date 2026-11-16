@@ -76,6 +76,97 @@ const EstimateBillTemplate = ({ sale }) => {
             print-color-adjust: exact !important;
           }
         }
+        .printable-invoice {
+          box-sizing: border-box !important;
+          color: #000000 !important;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .printable-invoice * {
+          box-sizing: border-box !important;
+        }
+        .printable-invoice table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+        }
+        .printable-invoice th, .printable-invoice td {
+          border: 1px solid #9ca3af !important;
+        }
+        .printable-invoice th {
+          background-color: #16325B !important;
+          color: #ffffff !important;
+        }
+        .printable-invoice .border-gray-400 {
+          border: 1px solid #9ca3af !important;
+        }
+        .printable-invoice .border-b {
+          border-bottom: 1px solid #9ca3af !important;
+        }
+        .printable-invoice .border-r {
+          border-right: 1px solid #9ca3af !important;
+        }
+        .printable-invoice .border-gray-300 {
+          border-color: #d1d5db !important;
+        }
+        .printable-invoice .bg-\\[\\#16325B\\],
+        .printable-invoice [class*="bg-[#16325B]"] {
+          background-color: #16325B !important;
+          color: #ffffff !important;
+        }
+        .printable-invoice .bg-\\[\\#E8F0FE\\],
+        .printable-invoice [class*="bg-[#E8F0FE]"] {
+          background-color: #E8F0FE !important;
+          color: #16325B !important;
+        }
+        .printable-invoice .grid-cols-12 {
+          display: grid !important;
+          grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+        }
+        .printable-invoice .col-span-7 {
+          grid-column: span 7 / span 7 !important;
+        }
+        .printable-invoice .col-span-5 {
+          grid-column: span 5 / span 5 !important;
+        }
+        .printable-invoice .col-span-12 {
+          grid-column: span 12 / span 12 !important;
+        }
+        .printable-invoice .grid-cols-2 {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+        .printable-invoice .flex {
+          display: flex !important;
+        }
+        .printable-invoice .justify-between {
+          justify-content: space-between !important;
+        }
+        .printable-invoice .justify-center {
+          justify-content: center !important;
+        }
+        .printable-invoice .justify-end {
+          justify-content: flex-end !important;
+        }
+        .printable-invoice .items-center {
+          align-items: center !important;
+        }
+        .printable-invoice .text-center {
+          text-align: center !important;
+        }
+        .printable-invoice .text-right {
+          text-align: right !important;
+        }
+        .printable-invoice .text-left {
+          text-align: left !important;
+        }
+        .printable-invoice .font-bold {
+          font-weight: 700 !important;
+        }
+        .printable-invoice .font-black,
+        .printable-invoice .font-extrabold {
+          font-weight: 900 !important;
+        }
       `}</style>
       {/* ── 1. Top Centered Company Header ── */}
       <div className="text-center pb-2" style={{ breakInside: 'avoid' }}>
